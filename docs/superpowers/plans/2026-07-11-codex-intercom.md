@@ -10,9 +10,9 @@
 
 ## Global Constraints
 
-- Project root is `/Users/tommy/Offline/projects/codex-intercom`.
+- Project root is `/path/to/codex-hl1-intercom-system`.
 - Every announcement is independently controlled by a boolean in `config.json` and defaults to `true`.
-- Existing `/Users/tommy/.codex/config.toml`, including its Computer Use `notify` command, must remain byte-for-byte unchanged.
+- Existing `~/.codex/config.toml`, including its Computer Use `notify` command, must remain byte-for-byte unchanged.
 - Generated Half-Life audio and downloaded fragments stay local and are not committed.
 - Queue completion is inferred with a four-second idle window because Codex hook input does not expose queue length.
 - Runtime failures must never block a Codex turn or approval request.
@@ -512,7 +512,7 @@ For each event in `UserPromptSubmit`, `PermissionRequest`, `SubagentStop`, and `
   "hooks": [
     {
       "type": "command",
-      "command": "/usr/bin/python3 /Users/tommy/Offline/projects/codex-intercom/src/intercom.py",
+      "command": "/usr/bin/python3 /path/to/codex-hl1-intercom-system/src/intercom.py",
       "timeout": 5,
       "statusMessage": "Black Mesa intercom"
     }
@@ -564,7 +564,7 @@ git commit -m "feat: install and remove Codex intercom hooks"
 **Files:**
 - Create: `README.md`
 - Modify: `config.json`
-- Modify: `/Users/tommy/.codex/hooks.json` through `scripts/install.py`
+- Modify: `~/.codex/hooks.json` through `scripts/install.py`
 
 **Interfaces:**
 - Consumes all previous task CLIs.
@@ -612,11 +612,11 @@ Expected: each phrase is understandable, ordered correctly, and free of truncati
 Run:
 
 ```bash
-before="$(shasum -a 256 /Users/tommy/.codex/config.toml)"
+before="$(shasum -a 256 "$HOME/.codex/config.toml")"
 /usr/bin/python3 scripts/install.py
-after="$(shasum -a 256 /Users/tommy/.codex/config.toml)"
+after="$(shasum -a 256 "$HOME/.codex/config.toml")"
 test "$before" = "$after"
-/usr/bin/python3 -m json.tool /Users/tommy/.codex/hooks.json >/dev/null
+/usr/bin/python3 -m json.tool "$HOME/.codex/hooks.json" >/dev/null
 ```
 
 Expected: install exits zero, `config.toml` hashes match exactly, and global hooks JSON is valid.

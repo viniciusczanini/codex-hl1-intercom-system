@@ -1,4 +1,4 @@
-# Codex Intercom
+# Codex HL1 Intercom System
 
 Black Mesa-style voice notifications for Codex on macOS. The project builds short announcements from the Half-Life 1 VOX catalog and connects them to Codex lifecycle hooks.
 
@@ -22,7 +22,7 @@ Edit [`config.json`](config.json). Changes apply on the next hook event; rebuild
 ```json
 {
   "announcements": {
-    "task_started": true,
+    "task_started": false,
     "permission_required": true,
     "response_required": true,
     "queue_item_complete": true,
@@ -37,6 +37,8 @@ Edit [`config.json`](config.json). Changes apply on the next hook event; rebuild
 
 Set an announcement to `false` to mute only that announcement. Missing announcement keys default to `true`. Invalid JSON fails silent and is recorded in `~/.codex/codex-intercom/intercom.log` so it cannot interrupt Codex.
 
+The shipped configuration keeps `task_started` muted to avoid a sound on every submitted prompt. Set it to `true` if you want the “Processing” announcement.
+
 ## Install
 
 Requirements:
@@ -45,10 +47,11 @@ Requirements:
 - `/usr/bin/python3` 3.9 or later
 - `ffmpeg` and `ffprobe` in `/opt/homebrew/bin` or on `PATH`
 
-Build the local WAV phrases and merge the hooks into `~/.codex/hooks.json`:
+Clone the repository, build the local WAV phrases, and merge the hooks into `~/.codex/hooks.json`:
 
 ```bash
-cd /Users/tommy/Offline/projects/codex-intercom
+git clone https://github.com/viniciusczanini/codex-hl1-intercom-system.git
+cd codex-hl1-intercom-system
 /usr/bin/python3 scripts/build_sounds.py
 /usr/bin/python3 scripts/install.py
 ```
@@ -73,7 +76,7 @@ Adjust `queue_idle_seconds` in `config.json` if queued prompts on your machine t
 ## Test and rebuild
 
 ```bash
-cd /Users/tommy/Offline/projects/codex-intercom
+cd codex-hl1-intercom-system
 PYTHONPATH=src /usr/bin/python3 -m unittest discover -s tests -v
 /usr/bin/python3 scripts/build_sounds.py
 ```
@@ -92,8 +95,22 @@ done
 ## Uninstall
 
 ```bash
-cd /Users/tommy/Offline/projects/codex-intercom
+cd codex-hl1-intercom-system
 /usr/bin/python3 scripts/uninstall.py
 ```
 
 Uninstall removes only handlers owned by this project. It preserves unrelated Codex hooks, `config.toml`, downloaded source clips, and generated phrases.
+
+## Troubleshooting
+
+Hook execution is recorded as metadata-only JSON Lines in `/tmp/codex-intercom-hooks.log`. Follow it live with:
+
+```bash
+tail -f /tmp/codex-intercom-hooks.log
+```
+
+The trace contains event, session, classification, scheduling, and playback status. It does not store prompt or assistant-message content, and macOS may remove it after a reboot.
+
+## Sound assets
+
+This is an unofficial fan project and is not affiliated with Valve. Half-Life names and sound assets belong to their respective owners. Source and generated audio files are downloaded or built locally and are intentionally excluded from the repository.

@@ -2,7 +2,7 @@
 
 ## Goal
 
-Create a macOS notification layer for Codex that plays short Half-Life 1 intercom announcements when work starts, needs attention, completes, blocks, or drains a prompt queue. The project lives at `/Users/tommy/Offline/projects/codex-intercom` and installs global user-level hooks without replacing the existing Codex `notify` command.
+Create a macOS notification layer for Codex that plays short Half-Life 1 intercom announcements when work starts, needs attention, completes, blocks, or drains a prompt queue. The project installs global user-level hooks without replacing the existing Codex `notify` command.
 
 ## Design principles
 
