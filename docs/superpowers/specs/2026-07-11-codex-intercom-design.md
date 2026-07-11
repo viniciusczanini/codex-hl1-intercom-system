@@ -20,7 +20,7 @@ Create a macOS notification layer for Codex that plays short Half-Life 1 interco
 | --- | --- | --- |
 | `task_started` | `UserPromptSubmit` begins a new item | “Processing.” |
 | `permission_required` | `PermissionRequest` | “Attention. Security clearance required. Please acknowledge.” |
-| `response_required` | `Stop` is classified as waiting for the user | “Attention. User communication required. Please acknowledge.” |
+| `response_required` | `Stop` is classified as waiting for the user | “Attention. Communication required. Please acknowledge.” |
 | `queue_item_complete` | Another queued item begins before the idle window closes | “Secondary objective secured.” |
 | `task_complete` | One completed item reaches the idle window with no successor | “Objective secured.” |
 | `queue_complete` | A batch of two or more items reaches the idle window | “Final objective secured. All systems nominal.” |
