@@ -1,11 +1,18 @@
 import json
 import io
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from codex_intercom.runtime import RuntimeContext, finalize_event, handle_event, main
+from codex_intercom.runtime import (
+    RuntimeContext,
+    finalize_event,
+    handle_event,
+    main,
+    trace_event,
+)
 from codex_intercom.state import StateStore
 
 
@@ -144,6 +151,27 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertEqual(json.loads(stdout.getvalue()), {})
         self.assertIn("bad config", log_path.read_text(encoding="utf-8"))
+
+    def test_trace_event_writes_structured_jsonl_without_message_content(self):
+        trace_path = Path(self.temp_dir.name) / "hook-trace.jsonl"
+        with patch.dict(
+            os.environ,
+            {"CODEX_INTERCOM_TRACE_PATH": str(trace_path)},
+        ):
+            trace_event(
+                "hook_received",
+                event="Stop",
+                session_id="session-1",
+                turn_id="turn-1",
+            )
+
+        record = json.loads(trace_path.read_text(encoding="utf-8"))
+        self.assertEqual(record["stage"], "hook_received")
+        self.assertEqual(record["event"], "Stop")
+        self.assertEqual(record["session_id"], "session-1")
+        self.assertEqual(record["turn_id"], "turn-1")
+        self.assertIn("timestamp", record)
+        self.assertNotIn("last_assistant_message", record)
 
 
 if __name__ == "__main__":
