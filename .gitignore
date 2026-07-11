@@ -1,1 +1,7 @@
 .worktrees/
+__pycache__/
+*.py[cod]
+sounds/source/
+sounds/normalized/
+sounds/generated/
+.coverage

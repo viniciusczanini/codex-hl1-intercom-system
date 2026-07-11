@@ -1,0 +1,13 @@
+{
+  "announcements": {
+    "task_started": true,
+    "permission_required": true,
+    "response_required": true,
+    "queue_item_complete": true,
+    "task_complete": true,
+    "queue_complete": true,
+    "subagent_complete": true,
+    "blocked": true
+  },
+  "queue_idle_seconds": 4
+}
