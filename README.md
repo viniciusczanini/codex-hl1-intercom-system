@@ -2,6 +2,8 @@
 
 Black Mesa-style voice notifications for Codex on macOS. The project builds short announcements from the Half-Life 1 VOX catalog and connects them to Codex lifecycle hooks.
 
+See the complete [installation and usage guide](INSTALLATION.md) for configuration, testing, troubleshooting, updating, and uninstalling.
+
 ## Announcements
 
 | Setting | Phrase | When it plays |
@@ -45,16 +47,16 @@ Requirements:
 
 - macOS with `/usr/bin/afplay`
 - `/usr/bin/python3` 3.9 or later
-- `ffmpeg` and `ffprobe` in `/opt/homebrew/bin` or on `PATH`
 
-Clone the repository, build the local WAV phrases, and merge the hooks into `~/.codex/hooks.json`:
+Clone the repository and merge the hooks into `~/.codex/hooks.json`:
 
 ```bash
 git clone https://github.com/viniciusczanini/codex-hl1-intercom-system.git
 cd codex-hl1-intercom-system
-/usr/bin/python3 scripts/build_sounds.py
 /usr/bin/python3 scripts/install.py
 ```
+
+The eight final WAV announcements are included in `assets/`, so normal installation does not require `ffmpeg`, audio downloads, or a separate build step.
 
 The installer preserves unrelated hooks and does not modify `~/.codex/config.toml` or its existing `notify` command. It is idempotent, so rerunning it does not create duplicate handlers.
 
@@ -73,20 +75,19 @@ Codex hooks do not expose queue length. Intercom therefore holds a normal comple
 
 Adjust `queue_idle_seconds` in `config.json` if queued prompts on your machine take longer to start.
 
-## Test and rebuild
+## Test
 
 ```bash
 cd codex-hl1-intercom-system
 PYTHONPATH=src /usr/bin/python3 -m unittest discover -s tests -v
-/usr/bin/python3 scripts/build_sounds.py
 ```
 
-Generated and downloaded Half-Life audio stays local under `sounds/` and is ignored by Git. The committed [`sounds/manifest.json`](sounds/manifest.json) records each source fragment and phrase sequence.
+The committed [`sounds/manifest.json`](sounds/manifest.json) records each source fragment and phrase sequence. Maintainers can rebuild the bundled assets with `/usr/bin/python3 scripts/install.py --rebuild-assets`; that optional path requires `ffmpeg`, `ffprobe`, and access to [HL1SFX](https://hl1sfx.com/).
 
 Play all generated phrases:
 
 ```bash
-for wav in sounds/generated/*.wav; do
+for wav in assets/*.wav; do
   echo "PLAYING $wav"
   /usr/bin/afplay "$wav"
 done
@@ -113,4 +114,6 @@ The trace contains event, session, classification, scheduling, and playback stat
 
 ## Sound assets
 
-This is an unofficial fan project and is not affiliated with Valve. Half-Life names and sound assets belong to their respective owners. Source and generated audio files are downloaded or built locally and are intentionally excluded from the repository.
+Final phrase assets are included for easy installation. Original fragments and normalized intermediate files remain local and are excluded from Git.
+
+Original sound fragments were sourced through [HL1SFX](https://hl1sfx.com/). Half-Life and its original audio assets were created by and belong to Valve Corporation. This unofficial integration and its phrase arrangements were created by [viniciusczanini](https://github.com/viniciusczanini). The project is not affiliated with or endorsed by Valve Corporation or HL1SFX.
