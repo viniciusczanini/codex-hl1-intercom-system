@@ -1,0 +1,79 @@
+{
+  "fragments": {
+    "processing": "vox/processing.wav",
+    "attention": "vox/attention.wav",
+    "security": "vox/security.wav",
+    "clearance": "vox/clearance.wav",
+    "required": "vox/required.wav",
+    "please": "vox/please.wav",
+    "acknowledge": "vox/acknowledge.wav",
+    "user": "vox/user.wav",
+    "communication": "vox/communication.wav",
+    "secondary": "vox/secondary.wav",
+    "objective": "vox/objective.wav",
+    "secured": "vox/secured.wav",
+    "final": "vox/final.wav",
+    "all": "vox/all.wav",
+    "systems": "vox/systems.wav",
+    "nominal": "vox/nominal.wav",
+    "warning": "vox/warning.wav",
+    "failed": "vox/failed.wav"
+  },
+  "phrases": {
+    "task_started": [
+      "processing"
+    ],
+    "permission_required": [
+      "attention",
+      "pause_sentence",
+      "security",
+      "clearance",
+      "required",
+      "pause_sentence",
+      "please",
+      "acknowledge"
+    ],
+    "response_required": [
+      "attention",
+      "pause_sentence",
+      "user",
+      "communication",
+      "required",
+      "pause_sentence",
+      "please",
+      "acknowledge"
+    ],
+    "queue_item_complete": [
+      "secondary",
+      "objective",
+      "secured"
+    ],
+    "task_complete": [
+      "objective",
+      "secured"
+    ],
+    "queue_complete": [
+      "final",
+      "objective",
+      "secured",
+      "pause_sentence",
+      "all",
+      "systems",
+      "nominal"
+    ],
+    "subagent_complete": [
+      "secondary",
+      "objective",
+      "secured"
+    ],
+    "blocked": [
+      "warning",
+      "pause_sentence",
+      "objective",
+      "failed",
+      "pause_sentence",
+      "user",
+      "acknowledge"
+    ]
+  }
+}
