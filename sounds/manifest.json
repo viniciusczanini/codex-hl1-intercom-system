@@ -36,7 +36,6 @@
     "response_required": [
       "attention",
       "pause_sentence",
-      "user",
       "communication",
       "required",
       "pause_sentence",

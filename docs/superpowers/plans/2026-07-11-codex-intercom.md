@@ -323,7 +323,7 @@ Expected: import or file failure because the builder and manifest do not exist.
   "phrases": {
     "task_started": ["processing"],
     "permission_required": ["attention", "pause_sentence", "security", "clearance", "required", "pause_sentence", "please", "acknowledge"],
-    "response_required": ["attention", "pause_sentence", "user", "communication", "required", "pause_sentence", "please", "acknowledge"],
+    "response_required": ["attention", "pause_sentence", "communication", "required", "pause_sentence", "please", "acknowledge"],
     "queue_item_complete": ["secondary", "objective", "secured"],
     "task_complete": ["objective", "secured"],
     "queue_complete": ["final", "objective", "secured", "pause_sentence", "all", "systems", "nominal"],

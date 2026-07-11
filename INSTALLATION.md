@@ -45,7 +45,7 @@ The desktop app loads hook definitions when its embedded Codex process starts. T
 | --- | --- | --- |
 | `task_started` | “Processing.” | A prompt or queued task starts |
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
-| `response_required` | “Attention. User communication required. Please acknowledge.” | Codex finishes with a direct question or request |
+| `response_required` | “Attention. Communication required. Please acknowledge.” | Codex finishes with a direct question or request |
 | `queue_item_complete` | “Secondary objective secured.” | A new queued prompt follows a completed item |
 | `task_complete` | “Objective secured.” | One task finishes with no queued successor |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A batch of two or more queued tasks finishes |
@@ -84,7 +84,7 @@ Use these simple checks after trusting the hooks:
 
 ### Response required
 
-Ask Codex to ask you a question before doing any work. When it stops on the question, the intercom should play the user-communication announcement.
+Ask Codex to ask you a question before doing any work. When it stops on the question, the intercom should play the communication-required announcement.
 
 ### Single task
 

@@ -10,6 +10,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class SoundBuilderTests(unittest.TestCase):
+    def test_response_required_phrase_omits_only_user(self):
+        manifest = load_manifest(ROOT / "sounds" / "manifest.json")
+        self.assertEqual(
+            manifest["phrases"]["response_required"],
+            [
+                "attention",
+                "pause_sentence",
+                "communication",
+                "required",
+                "pause_sentence",
+                "please",
+                "acknowledge",
+            ],
+        )
+
     def test_every_phrase_has_a_bundled_asset(self):
         manifest = load_manifest(ROOT / "sounds" / "manifest.json")
         self.assertEqual(

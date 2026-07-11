@@ -10,7 +10,7 @@ See the complete [installation and usage guide](INSTALLATION.md) for configurati
 | --- | --- | --- |
 | `task_started` | “Processing.” | A task or queued prompt starts |
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
-| `response_required` | “Attention. User communication required. Please acknowledge.” | Codex stops with a direct question or request |
+| `response_required` | “Attention. Communication required. Please acknowledge.” | Codex stops with a direct question or request |
 | `queue_item_complete` | “Secondary objective secured.” | Another queued item starts after the previous one completes |
 | `task_complete` | “Objective secured.” | One task finishes and no queued prompt follows |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A sequence of two or more queued tasks finishes |
