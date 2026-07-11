@@ -10,8 +10,10 @@ from pathlib import Path
 
 try:
     from scripts.build_sounds import build_all
+    from scripts.uninstall import remove_owned_hooks
 except ModuleNotFoundError:
     from build_sounds import build_all
+    from uninstall import remove_owned_hooks
 
 
 EVENTS = (
@@ -119,8 +121,11 @@ def install(codex_home, root, skip_build=False):
         else bool(existing_record.get("hooks_file_existed"))
     )
 
-    existing = _read_json(hooks_path, {})
     command = intercom_command(root)
+    existing = _read_json(hooks_path, {})
+    previous_command = existing_record.get("command")
+    if previous_command and previous_command != command:
+        existing = remove_owned_hooks(existing, previous_command)
     merged = merge_hooks(existing, command)
 
     if first_install and hooks_path.exists():

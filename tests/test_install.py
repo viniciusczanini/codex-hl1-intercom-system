@@ -93,6 +93,23 @@ class InstallRoundTripTests(unittest.TestCase):
             existing,
         )
 
+    def test_reinstall_after_project_move_replaces_old_owned_command(self):
+        install(self.codex_home, self.project, skip_build=True)
+        moved_project = self.root / "moved-project"
+        (moved_project / "src").mkdir(parents=True)
+        (moved_project / "src" / "intercom.py").write_text("# moved hook\n", encoding="utf-8")
+
+        install(self.codex_home, moved_project, skip_build=True)
+
+        installed = json.loads(
+            (self.codex_home / "hooks.json").read_text(encoding="utf-8")
+        )
+        commands = extract_commands(installed)
+        old_command = "/usr/bin/python3 {0}".format(self.project / "src" / "intercom.py")
+        new_command = "/usr/bin/python3 {0}".format(moved_project / "src" / "intercom.py")
+        self.assertNotIn(old_command, commands)
+        self.assertEqual(commands.count(new_command), len(EVENTS))
+
 
 if __name__ == "__main__":
     unittest.main()
