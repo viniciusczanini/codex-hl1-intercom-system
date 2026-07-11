@@ -157,6 +157,7 @@ def main(argv=None):
         return 1
     print("Installed Codex intercom hooks in {0}".format(hooks_path))
     print("Open /hooks in Codex and trust the four Black Mesa intercom definitions.")
+    print("If the ChatGPT desktop app is open, quit and reopen it once to load the hooks.")
     return 0
 
 

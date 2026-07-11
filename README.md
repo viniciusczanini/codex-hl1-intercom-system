@@ -57,6 +57,8 @@ The installer preserves unrelated hooks and does not modify `~/.codex/config.tom
 
 After installation, open `/hooks` in Codex and trust the four entries labelled **Black Mesa intercom**. Codex hashes hook definitions; changed definitions must be reviewed again.
 
+If the ChatGPT desktop app was already running when the hooks were installed, quit and reopen it once. Its embedded `codex app-server` loads hook definitions when the process starts. Announcement booleans in `config.json` are read on every event and do not require another restart.
+
 ## Queue inference
 
 Codex hooks do not expose queue length. Intercom therefore holds a normal completion for four seconds:
