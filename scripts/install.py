@@ -81,6 +81,30 @@ def _read_json(path, default):
     return value
 
 
+def expected_assets(root):
+    root = Path(root)
+    manifest = _read_json(root / "sounds" / "manifest.json", {})
+    phrases = manifest.get("phrases")
+    if not isinstance(phrases, dict) or not phrases:
+        raise ValueError("sound manifest must contain phrase definitions")
+    return [root / "assets" / (name + ".wav") for name in sorted(phrases)]
+
+
+def validate_assets(root):
+    invalid = []
+    for path in expected_assets(root):
+        try:
+            valid = path.is_file() and path.stat().st_size > 44
+        except OSError:
+            valid = False
+        if not valid:
+            invalid.append(path.name)
+    if invalid:
+        raise ValueError(
+            "missing or invalid bundled assets: {0}".format(", ".join(invalid))
+        )
+
+
 def _atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temp_name = tempfile.mkstemp(
@@ -101,14 +125,17 @@ def _atomic_json(path, value):
             os.unlink(temp_name)
 
 
-def install(codex_home, root, skip_build=False):
+def install(codex_home, root, rebuild_assets=False, skip_build=None):
     codex_home = Path(codex_home).expanduser().absolute()
     root = Path(root).expanduser().absolute()
     entrypoint = root / "src" / "intercom.py"
     if not entrypoint.exists():
         raise ValueError("hook entrypoint not found: {0}".format(entrypoint))
-    if not skip_build:
+    if skip_build is False:
+        rebuild_assets = True
+    if rebuild_assets:
         build_all(root)
+    validate_assets(root)
 
     hooks_path = codex_home / "hooks.json"
     runtime_root = codex_home / "codex-intercom"
@@ -148,10 +175,16 @@ def install(codex_home, root, skip_build=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Install Codex Half-Life intercom hooks")
     parser.add_argument("--codex-home", type=Path, default=Path.home() / ".codex")
-    parser.add_argument("--skip-build", action="store_true")
+    build_group = parser.add_mutually_exclusive_group()
+    build_group.add_argument("--rebuild-assets", action="store_true")
+    build_group.add_argument("--skip-build", action="store_true", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     try:
-        hooks_path = install(args.codex_home, project_root(), args.skip_build)
+        hooks_path = install(
+            args.codex_home,
+            project_root(),
+            rebuild_assets=args.rebuild_assets,
+        )
     except Exception as exc:
         print("install failed: {0}".format(exc), file=sys.stderr)
         return 1

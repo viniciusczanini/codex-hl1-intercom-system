@@ -1,9 +1,11 @@
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from scripts.install import EVENTS, install, merge_hooks
+from scripts.install import EVENTS, install, merge_hooks, validate_assets
 from scripts.uninstall import remove_owned_hooks, uninstall
 
 
@@ -61,6 +63,35 @@ class InstallRoundTripTests(unittest.TestCase):
         self.project = self.root / "project"
         (self.project / "src").mkdir(parents=True)
         (self.project / "src" / "intercom.py").write_text("# hook\n", encoding="utf-8")
+        (self.project / "sounds").mkdir()
+        (self.project / "sounds" / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "fragments": {"objective": "vox/objective.wav"},
+                    "phrases": {"task_complete": ["objective"]},
+                }
+            ),
+            encoding="utf-8",
+        )
+        (self.project / "assets").mkdir()
+        (self.project / "assets" / "task_complete.wav").write_bytes(
+            b"RIFF" + b"\0" * 64
+        )
+
+    def test_validate_assets_rejects_missing_phrase(self):
+        (self.project / "assets" / "task_complete.wav").unlink()
+        with self.assertRaisesRegex(ValueError, "task_complete.wav"):
+            validate_assets(self.project)
+
+    @patch("scripts.install.build_all")
+    def test_default_install_does_not_rebuild_assets(self, build_all):
+        install(self.codex_home, self.project)
+        build_all.assert_not_called()
+
+    @patch("scripts.install.build_all")
+    def test_explicit_rebuild_runs_builder(self, build_all):
+        install(self.codex_home, self.project, rebuild_assets=True)
+        build_all.assert_called_once_with(self.project)
 
     def test_install_does_not_change_config_toml(self):
         config_path = self.codex_home / "config.toml"
@@ -98,6 +129,8 @@ class InstallRoundTripTests(unittest.TestCase):
         moved_project = self.root / "moved-project"
         (moved_project / "src").mkdir(parents=True)
         (moved_project / "src" / "intercom.py").write_text("# moved hook\n", encoding="utf-8")
+        shutil.copytree(self.project / "sounds", moved_project / "sounds")
+        shutil.copytree(self.project / "assets", moved_project / "assets")
 
         install(self.codex_home, moved_project, skip_build=True)
 
