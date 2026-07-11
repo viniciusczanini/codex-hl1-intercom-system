@@ -1,0 +1,98 @@
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from scripts.install import EVENTS, install, merge_hooks
+from scripts.uninstall import remove_owned_hooks, uninstall
+
+
+INTERCOM_COMMAND = "/usr/bin/python3 /project/src/intercom.py"
+
+
+def extract_commands(document):
+    commands = []
+    for groups in document.get("hooks", {}).values():
+        for group in groups:
+            for handler in group.get("hooks", []):
+                command = handler.get("command")
+                if command:
+                    commands.append(command)
+    return commands
+
+
+class HookMergeTests(unittest.TestCase):
+    def setUp(self):
+        self.existing = {
+            "hooks": {
+                "Stop": [
+                    {
+                        "matcher": "",
+                        "hooks": [{"type": "command", "command": "other"}],
+                    }
+                ]
+            }
+        }
+
+    def test_merge_preserves_unrelated_hooks_and_adds_owned_events(self):
+        merged = merge_hooks(self.existing, INTERCOM_COMMAND)
+        commands = extract_commands(merged)
+        self.assertIn("other", commands)
+        self.assertEqual(commands.count(INTERCOM_COMMAND), len(EVENTS))
+
+    def test_repeated_merge_is_idempotent(self):
+        once = merge_hooks({}, INTERCOM_COMMAND)
+        twice = merge_hooks(once, INTERCOM_COMMAND)
+        self.assertEqual(once, twice)
+
+    def test_uninstall_removes_only_owned_commands(self):
+        installed = merge_hooks(self.existing, INTERCOM_COMMAND)
+        cleaned = remove_owned_hooks(installed, INTERCOM_COMMAND)
+        self.assertEqual(cleaned, self.existing)
+
+
+class InstallRoundTripTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp_dir.cleanup)
+        self.root = Path(self.temp_dir.name)
+        self.codex_home = self.root / "codex-home"
+        self.codex_home.mkdir()
+        self.project = self.root / "project"
+        (self.project / "src").mkdir(parents=True)
+        (self.project / "src" / "intercom.py").write_text("# hook\n", encoding="utf-8")
+
+    def test_install_does_not_change_config_toml(self):
+        config_path = self.codex_home / "config.toml"
+        original = 'notify = ["existing", "turn-ended"]\n'
+        config_path.write_text(original, encoding="utf-8")
+        install(self.codex_home, self.project, skip_build=True)
+        self.assertEqual(config_path.read_text(encoding="utf-8"), original)
+
+    def test_install_and_uninstall_round_trip_without_preexisting_hooks(self):
+        install(self.codex_home, self.project, skip_build=True)
+        installed = json.loads((self.codex_home / "hooks.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            extract_commands(installed).count(
+                "/usr/bin/python3 {0}".format(self.project / "src" / "intercom.py")
+            ),
+            len(EVENTS),
+        )
+        uninstall(self.codex_home, self.project)
+        self.assertFalse((self.codex_home / "hooks.json").exists())
+
+    def test_install_and_uninstall_preserve_preexisting_hooks(self):
+        hooks_path = self.codex_home / "hooks.json"
+        existing = {"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "other"}]}]}}
+        hooks_path.write_text(json.dumps(existing), encoding="utf-8")
+        install(self.codex_home, self.project, skip_build=True)
+        install(self.codex_home, self.project, skip_build=True)
+        uninstall(self.codex_home, self.project)
+        self.assertEqual(
+            json.loads(hooks_path.read_text(encoding="utf-8")),
+            existing,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
