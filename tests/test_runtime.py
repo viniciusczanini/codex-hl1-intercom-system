@@ -8,12 +8,16 @@ from unittest.mock import patch
 
 from codex_intercom.runtime import (
     RuntimeContext,
+    create_context,
     finalize_event,
     handle_event,
     main,
     trace_event,
 )
 from codex_intercom.state import StateStore
+
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakePlayer:
@@ -70,6 +74,13 @@ class RuntimeTests(unittest.TestCase):
         output = handle_event(self.event("PermissionRequest"), self.context)
         self.assertEqual(self.player.played, ["permission_required"])
         self.assertEqual(output, {})
+
+    def test_production_context_uses_bundled_assets(self):
+        context = create_context(
+            root=ROOT,
+            codex_home=Path(self.temp_dir.name) / "codex",
+        )
+        self.assertEqual(context.player.sounds_dir, ROOT / "assets")
 
     def test_disabled_announcement_is_suppressed(self):
         self.config["announcements"]["permission_required"] = False

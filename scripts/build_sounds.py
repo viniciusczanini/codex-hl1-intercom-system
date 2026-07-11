@@ -239,7 +239,7 @@ def build_all(root=None, runner=subprocess.run):
     ffprobe = _tool("/opt/homebrew/bin/ffprobe", "ffprobe")
     source_dir = root / "sounds" / "source"
     normalized_dir = root / "sounds" / "normalized"
-    generated_dir = root / "sounds" / "generated"
+    generated_dir = root / "assets"
 
     normalized = {}
     for name, hl1_path in manifest["fragments"].items():
@@ -269,7 +269,7 @@ def main():
     except Exception as exc:
         print("build failed: {0}".format(exc), file=sys.stderr)
         return 1
-    print("Built Half-Life intercom phrases in sounds/generated")
+    print("Built Half-Life intercom phrases in assets")
     return 0
 
 

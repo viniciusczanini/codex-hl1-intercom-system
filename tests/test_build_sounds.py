@@ -10,6 +10,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class SoundBuilderTests(unittest.TestCase):
+    def test_every_phrase_has_a_bundled_asset(self):
+        manifest = load_manifest(ROOT / "sounds" / "manifest.json")
+        self.assertEqual(
+            {path.stem for path in (ROOT / "assets").glob("*.wav")},
+            set(manifest["phrases"]),
+        )
+
     def test_every_phrase_references_declared_fragments(self):
         manifest = load_manifest(ROOT / "sounds" / "manifest.json")
         fragments = set(manifest["fragments"])

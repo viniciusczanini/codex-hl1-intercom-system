@@ -157,7 +157,7 @@ def create_context(root=None, codex_home=None):
     return RuntimeContext(
         config=load_config(root / "config.json"),
         state=StateStore(runtime_root / "state"),
-        player=AudioPlayer(root / "sounds" / "generated", log_path),
+        player=AudioPlayer(root / "assets", log_path),
         scheduler=FinalizerScheduler(root / "src" / "intercom.py"),
         trace=trace_event,
     )
