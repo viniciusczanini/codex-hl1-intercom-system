@@ -46,7 +46,12 @@ Create `INSTALLATION.md` in English with:
 6. Trace and runtime-log troubleshooting.
 7. Updating and uninstalling.
 8. An advanced asset-rebuild section.
-9. Clear notice that this is an unofficial fan project and that Half-Life assets belong to their respective owners.
+9. A link to [HL1SFX](https://hl1sfx.com/) for users who want to find additional sounds.
+10. A dedicated credits section that acknowledges:
+    - [HL1SFX](https://hl1sfx.com/) as the source used to locate and download the original sound fragments.
+    - Valve Corporation as the creator and rights holder of Half-Life and its original audio assets.
+    - `viniciusczanini` as the author of this unofficial integration and its phrase arrangements.
+    - No affiliation with or endorsement by Valve or HL1SFX.
 
 The README will link to the guide and keep only the concise installation path. All examples will use repository-relative paths.
 
@@ -57,6 +62,7 @@ The README will link to the guide and keep only the concise installation path. A
 - Automated tests cover bundled-asset validation, the default no-build install path, the optional rebuild path, and the runtime asset directory.
 - The full unit suite, JSON validation, WAV existence checks, installer dry run, and a live hook smoke test must pass before publishing.
 - Post-push verification confirms that all eight assets exist on GitHub and that local `main` matches `origin/main`.
+- Link verification confirms that `INSTALLATION.md` contains a working `https://hl1sfx.com/` link and the complete credits notice.
 
 ## Out of scope
 
