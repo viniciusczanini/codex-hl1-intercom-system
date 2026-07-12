@@ -8,7 +8,6 @@ ANNOUNCEMENTS = (
     "queue_item_complete",
     "task_complete",
     "queue_complete",
-    "subagent_complete",
     "blocked",
 )
 
@@ -45,9 +44,14 @@ def load_config(path):
     ):
         raise ConfigError("queue_idle_seconds must be positive")
 
+    alokium_enabled = raw.get("alokium_enabled", True)
+    if not isinstance(alokium_enabled, bool):
+        raise ConfigError("alokium_enabled must be boolean")
+
     return {
         "announcements": merged,
         "queue_idle_seconds": float(idle),
+        "alokium_enabled": alokium_enabled,
     }
 
 

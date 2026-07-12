@@ -37,6 +37,16 @@ class FakeScheduler:
         self.calls.append((session_id, token, delay))
 
 
+class FakeNotifier:
+    def __init__(self, result=True):
+        self.calls = []
+        self.result = result
+
+    def notify(self, announcement, session_id=None, turn_id=None):
+        self.calls.append((announcement, session_id, turn_id))
+        return self.result
+
+
 class RuntimeTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -44,6 +54,7 @@ class RuntimeTests(unittest.TestCase):
         self.state = StateStore(Path(self.temp_dir.name) / "state")
         self.player = FakePlayer()
         self.scheduler = FakeScheduler()
+        self.notifier = FakeNotifier()
         self.config = {
             "announcements": {
                 "task_started": True,
@@ -62,6 +73,7 @@ class RuntimeTests(unittest.TestCase):
             state=self.state,
             player=self.player,
             scheduler=self.scheduler,
+            notifier=self.notifier,
             token_factory=lambda: "token-1",
         )
 
@@ -87,9 +99,11 @@ class RuntimeTests(unittest.TestCase):
         handle_event(self.event("PermissionRequest"), self.context)
         self.assertEqual(self.player.played, [])
 
-    def test_subagent_stop_plays_subagent_phrase(self):
+    def test_subagent_stop_is_silent_in_both_destinations(self):
         output = handle_event(self.event("SubagentStop"), self.context)
-        self.assertEqual(self.player.played, ["subagent_complete"])
+        self.assertEqual(self.player.played, [])
+        self.assertEqual(self.notifier.calls, [])
+        self.assertEqual(self.scheduler.calls, [])
         self.assertEqual(output, {})
 
     def test_prompt_after_pending_stop_marks_previous_queue_item(self):
@@ -114,6 +128,7 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(output, {})
         self.assertEqual(self.player.played, [])
         self.assertEqual(self.scheduler.calls, [("session-1", "token-1", 4.0)])
+        self.assertEqual(self.notifier.calls, [])
 
     def test_waiting_for_user_plays_immediately_and_closes_batch(self):
         handle_event(self.event("UserPromptSubmit"), self.context)
@@ -124,6 +139,10 @@ class RuntimeTests(unittest.TestCase):
         )
         self.assertEqual(output, {})
         self.assertEqual(self.player.played, ["response_required"])
+        self.assertEqual(
+            self.notifier.calls[-1],
+            ("response_required", "session-1", None),
+        )
         self.assertFalse(self.state.prompt_started("session-1").previous_pending)
 
     def test_blocked_stop_plays_blocked_phrase(self):
@@ -132,6 +151,10 @@ class RuntimeTests(unittest.TestCase):
             self.context,
         )
         self.assertEqual(self.player.played, ["blocked"])
+        self.assertEqual(
+            self.notifier.calls,
+            [("blocked", "session-1", None)],
+        )
 
     def test_finalizer_plays_state_selected_announcement(self):
         handle_event(self.event("UserPromptSubmit"), self.context)
@@ -143,6 +166,19 @@ class RuntimeTests(unittest.TestCase):
         output = finalize_event("session-1", "token-1", self.context)
         self.assertEqual(output, {})
         self.assertEqual(self.player.played, ["task_complete"])
+        self.assertEqual(
+            self.notifier.calls[-1],
+            ("task_complete", "session-1", None),
+        )
+
+    def test_disabled_audio_does_not_disable_alokium(self):
+        self.config["announcements"]["permission_required"] = False
+        handle_event(self.event("PermissionRequest"), self.context)
+        self.assertEqual(self.player.played, [])
+        self.assertEqual(
+            self.notifier.calls,
+            [("permission_required", "session-1", None)],
+        )
 
     def test_stop_cli_emits_json_when_context_creation_fails(self):
         stdout = io.StringIO()

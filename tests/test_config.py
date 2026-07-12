@@ -53,6 +53,11 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(ConfigError):
             load_config(path)
 
+    def test_alokium_toggle_must_be_boolean(self):
+        path = self.write_json({"alokium_enabled": "yes"})
+        with self.assertRaises(ConfigError):
+            load_config(path)
+
 
 if __name__ == "__main__":
     unittest.main()

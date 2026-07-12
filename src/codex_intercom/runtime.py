@@ -58,12 +58,67 @@ class FinalizerScheduler:
         )
 
 
+class SemanticNotifier:
+    ANNOUNCEMENTS = frozenset((
+        "permission_required",
+        "response_required",
+        "blocked",
+        "queue_item_complete",
+        "task_complete",
+        "queue_complete",
+    ))
+
+    def __init__(self, adapter=None, runner=subprocess.run):
+        self.adapter = adapter or self.default_adapter_path()
+        self.runner = runner
+
+    @staticmethod
+    def default_adapter_path():
+        configured = os.environ.get("CODEX_ALOKIUM_ADAPTER")
+        if configured:
+            return Path(configured).expanduser()
+        projects_root = Path(__file__).resolve().parents[3]
+        return projects_root / "codex_alokium_intercom" / "src" / "intercom.py"
+
+    def notify(self, announcement, session_id=None, turn_id=None):
+        if announcement not in self.ANNOUNCEMENTS or not self.adapter.is_file():
+            return False
+        payload = {
+            "announcement": announcement,
+            "session_id": session_id,
+            "turn_id": turn_id,
+        }
+        try:
+            self.runner(
+                ["/usr/bin/python3", str(self.adapter)],
+                input=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=3,
+                check=False,
+                start_new_session=True,
+            )
+            return True
+        except (OSError, subprocess.SubprocessError):
+            return False
+
+
 class RuntimeContext:
-    def __init__(self, config, state, player, scheduler, token_factory=None, trace=None):
+    def __init__(
+        self,
+        config,
+        state,
+        player,
+        scheduler,
+        notifier=None,
+        token_factory=None,
+        trace=None,
+    ):
         self.config = config
         self.state = state
         self.player = player
         self.scheduler = scheduler
+        self.notifier = notifier
         self.token_factory = token_factory or (lambda: uuid.uuid4().hex)
         self.trace = trace or (lambda stage, **fields: None)
 
@@ -74,6 +129,25 @@ class RuntimeContext:
         started = self.player.play(name)
         self.trace("play_attempted", announcement=name, started=bool(started))
         return started
+
+    def dispatch(self, name, session_id=None, turn_id=None):
+        audio_started = self.play(name)
+        notified = False
+        if (
+            self.notifier is not None
+            and self.config.get("alokium_enabled", True)
+            and name in SemanticNotifier.ANNOUNCEMENTS
+        ):
+            notified = self.notifier.notify(name, session_id, turn_id)
+        self.trace(
+            "announcement_dispatched",
+            announcement=name,
+            session_id=session_id,
+            turn_id=turn_id,
+            audio_started=bool(audio_started),
+            alokium_started=bool(notified),
+        )
+        return audio_started or notified
 
     def schedule_finalize(self, session_id, turn_id):
         token = self.token_factory()
@@ -97,9 +171,13 @@ def handle_event(event, context):
     session_id = event.get("session_id", "unknown")
 
     if event_name == "PermissionRequest":
-        context.play("permission_required")
+        context.dispatch(
+            "permission_required",
+            session_id,
+            event.get("turn_id"),
+        )
     elif event_name == "SubagentStop":
-        context.play("subagent_complete")
+        context.trace("subagent_stop_ignored", session_id=session_id)
     elif event_name == "UserPromptSubmit":
         transition = context.state.prompt_started(session_id)
         context.trace(
@@ -109,8 +187,8 @@ def handle_event(event, context):
             previous_pending=transition.previous_pending,
         )
         if transition.previous_pending:
-            context.play("queue_item_complete")
-        context.play("task_started")
+            context.dispatch("queue_item_complete", session_id)
+        context.dispatch("task_started", session_id)
     elif event_name == "Stop":
         classification = classify_stop(event.get("last_assistant_message", ""))
         context.trace(
@@ -121,7 +199,7 @@ def handle_event(event, context):
         )
         if classification in ("response_required", "blocked"):
             context.state.close_attention(session_id)
-            context.play(classification)
+            context.dispatch(classification, session_id, event.get("turn_id"))
         else:
             context.schedule_finalize(session_id, event.get("turn_id", ""))
     return {}
@@ -136,7 +214,7 @@ def finalize_event(session_id, token, context):
         announcement=transition.announcement,
     )
     if transition.announcement:
-        context.play(transition.announcement)
+        context.dispatch(transition.announcement, session_id)
     return {}
 
 
@@ -159,6 +237,7 @@ def create_context(root=None, codex_home=None):
         state=StateStore(runtime_root / "state"),
         player=AudioPlayer(root / "assets", log_path),
         scheduler=FinalizerScheduler(root / "src" / "intercom.py"),
+        notifier=SemanticNotifier(),
         trace=trace_event,
     )
 

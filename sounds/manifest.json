@@ -60,11 +60,6 @@
       "systems",
       "nominal"
     ],
-    "subagent_complete": [
-      "secondary",
-      "objective",
-      "secured"
-    ],
     "blocked": [
       "warning",
       "pause_sentence",
