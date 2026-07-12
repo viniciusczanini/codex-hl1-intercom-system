@@ -49,7 +49,7 @@ If the separate `codex_alokium_intercom` repository exists beside this checkout,
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
 | `response_required` | “Attention. Communication required. Please acknowledge.” | Codex finishes with a direct question or request |
 | `queue_item_complete` | “Secondary objective secured.” | A new queued prompt follows a completed item |
-| `task_complete` | “Objective secured.” | One task finishes with no queued successor |
+| `task_complete` | “Final objective reached.” | One task finishes with no queued successor |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A batch of two or more queued tasks finishes |
 | `blocked` | “Warning. Objective failed. User acknowledge.” | Codex reports that it cannot continue |
 
@@ -79,7 +79,7 @@ Set any announcement to `false` to mute only that event. Missing announcement ke
 
 `queue_idle_seconds` controls how long the intercom waits for another prompt before announcing that a task or queue has finished. Increase it if queued prompts on your machine routinely take more than four seconds to begin.
 
-Completion is aggregated across Codex sessions. A `Stop` from one task cannot play “Objective secured” while another observed session remains active. The last session to stop starts the global idle window and produces one final task or queue announcement.
+Completion is aggregated across Codex sessions. A `Stop` from one task cannot play “Final objective reached” while another observed session remains active. The last session to stop starts the global idle window and produces one final task or queue announcement.
 
 Set `alokium_enabled` to `false` to disable LED notifications while keeping audio active.
 
@@ -95,7 +95,7 @@ Ask Codex to ask you a question before doing any work. When it stops on the ques
 
 ### Single task
 
-Send one small task and wait longer than `queue_idle_seconds`. The intercom should play “Objective secured.”
+Send one small task and wait longer than `queue_idle_seconds`. The intercom should play “Final objective reached.”
 
 ### Queued tasks
 

@@ -15,6 +15,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class SoundBuilderTests(unittest.TestCase):
+    def test_task_complete_says_final_objective_reached(self):
+        manifest = load_manifest(ROOT / "sounds" / "manifest.json")
+        self.assertEqual(
+            manifest["phrases"]["task_complete"],
+            ["final", "objective", "reached"],
+        )
+
     def test_every_spoken_phrase_is_prefixed_with_buzwarn(self):
         manifest = load_manifest(ROOT / "sounds" / "manifest.json")
         self.assertEqual(manifest["fragments"]["buzwarn"], "vox/buzwarn.wav")

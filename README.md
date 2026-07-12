@@ -14,7 +14,7 @@ See the complete [installation and usage guide](INSTALLATION.md) for configurati
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
 | `response_required` | “Attention. Communication required. Please acknowledge.” | Codex stops with a direct question or request |
 | `queue_item_complete` | “Secondary objective secured.” | Another queued item starts after the previous one completes |
-| `task_complete` | “Objective secured.” | One task finishes and no queued prompt follows |
+| `task_complete` | “Final objective reached.” | One task finishes and no queued prompt follows |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A sequence of two or more queued tasks finishes |
 | `blocked` | “Warning. Objective failed. User acknowledge.” | Codex reports that it cannot continue |
 

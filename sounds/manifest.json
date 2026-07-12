@@ -6,6 +6,7 @@
     "security": "vox/security.wav",
     "clearance": "vox/clearance.wav",
     "required": "vox/required.wav",
+    "reached": "vox/reached.wav",
     "please": "vox/please.wav",
     "acknowledge": "vox/acknowledge.wav",
     "user": "vox/user.wav",
@@ -49,8 +50,9 @@
       "secured"
     ],
     "task_complete": [
+      "final",
       "objective",
-      "secured"
+      "reached"
     ],
     "queue_complete": [
       "final",
