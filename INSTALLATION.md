@@ -1,6 +1,6 @@
 # Installation and Usage
 
-Codex HL1 Intercom System plays Half-Life 1 VOX-style announcements for Codex lifecycle events on macOS. The repository includes the eight final WAV phrases, so normal installation does not require downloading or building audio.
+Codex HL1 Intercom System plays Half-Life 1 VOX-style announcements for Codex lifecycle events on macOS. Every spoken announcement starts with the original `vox/buzwarn.wav` signal. The repository includes seven final WAV phrases, so normal installation does not require downloading or building audio.
 
 ## Requirements
 
@@ -23,7 +23,7 @@ The installer:
 
 1. Validates every bundled WAV in `assets/`.
 2. Preserves unrelated handlers already present in `~/.codex/hooks.json`.
-3. Adds the four intercom handlers for `UserPromptSubmit`, `PermissionRequest`, `SubagentStop`, and `Stop`.
+3. Adds three intercom handlers for `UserPromptSubmit`, `PermissionRequest`, and `Stop`.
 4. Leaves `~/.codex/config.toml` and its existing `notify` command unchanged.
 5. Records installation ownership in `~/.codex/codex-intercom/install.json` so uninstalling removes only this project.
 
@@ -34,12 +34,12 @@ Running the installer again is safe and does not duplicate hooks.
 After installation:
 
 1. Open `/hooks` in Codex.
-2. Review and trust the four entries labelled **Black Mesa intercom**.
+2. Review and trust the three entries labelled **Black Mesa intercom**.
 3. If the ChatGPT desktop app was already open during installation, quit it normally and reopen it once.
 
 The desktop app loads hook definitions when its embedded Codex process starts. This restart is only needed after installing or changing hook definitions. Editing announcement toggles in `config.json` takes effect on the next event without another restart.
 
-If the separate `codex_alokium_intercom` repository exists beside this checkout, this hook also forwards its raw `PermissionRequest` and `Stop` events to that adapter. No second hook definition or desktop restart is required for the LED bridge; each event launches the adapter from disk through the already-loaded Black Mesa entrypoint.
+If the separate `codex_alokium_intercom` repository exists beside this checkout, this runtime sends it the same finalized semantic announcement used for audio. It never forwards raw `Stop` or `SubagentStop` events. No second hook definition is required for the LED bridge.
 
 ## Announcements
 
@@ -51,8 +51,9 @@ If the separate `codex_alokium_intercom` repository exists beside this checkout,
 | `queue_item_complete` | “Secondary objective secured.” | A new queued prompt follows a completed item |
 | `task_complete` | “Objective secured.” | One task finishes with no queued successor |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A batch of two or more queued tasks finishes |
-| `subagent_complete` | “Secondary objective secured.” | A Codex subagent finishes |
 | `blocked` | “Warning. Objective failed. User acknowledge.” | Codex reports that it cannot continue |
+
+Internal subagent completion is intentionally silent in both audio and Alokium.
 
 ## Configure announcements
 
@@ -67,9 +68,9 @@ Edit `config.json` in the cloned repository:
     "queue_item_complete": true,
     "task_complete": true,
     "queue_complete": true,
-    "subagent_complete": true,
     "blocked": true
   },
+  "alokium_enabled": true,
   "queue_idle_seconds": 4
 }
 ```
@@ -77,6 +78,8 @@ Edit `config.json` in the cloned repository:
 Set any announcement to `false` to mute only that event. Missing announcement keys default to `true`. The shipped configuration keeps `task_started` disabled to avoid playing “Processing” for every submitted prompt.
 
 `queue_idle_seconds` controls how long the intercom waits for another prompt before announcing that a task or queue has finished. Increase it if queued prompts on your machine routinely take more than four seconds to begin.
+
+Set `alokium_enabled` to `false` to disable LED notifications while keeping audio active.
 
 Invalid configuration does not interrupt Codex. The event is skipped and the error is written to `~/.codex/codex-intercom/intercom.log`.
 
@@ -125,8 +128,8 @@ Useful trace stages include:
 - `play_attempted`: audio playback was started.
 - `play_suppressed`: the announcement is disabled in `config.json`.
 - `hook_failed`: the hook raised an error.
-- `alokium_bridge_forwarded`: the event was passed to the separate Alokium adapter.
-- `alokium_bridge_skipped`: the optional adapter file was not found.
+- `announcement_dispatched`: audio and semantic Alokium results for one finalized announcement.
+- `subagent_stop_ignored`: an internal subagent event was intentionally silenced.
 
 ### Check runtime errors
 
@@ -138,7 +141,7 @@ This log reports invalid configuration, missing sound files, and playback-launch
 
 ### No hook events appear
 
-1. Confirm the four entries exist and are trusted in `/hooks`.
+1. Confirm the three entries exist and are trusted in `/hooks`.
 2. Confirm `~/.codex/hooks.json` points to the current clone.
 3. Quit and reopen the ChatGPT desktop app once.
 4. Rerun `/usr/bin/python3 scripts/install.py` if the repository was moved.
@@ -173,7 +176,7 @@ To rebuild them, install `ffmpeg` and `ffprobe`, ensure `hl1sfx.com` is reachabl
 /usr/bin/python3 scripts/install.py --rebuild-assets
 ```
 
-The builder downloads the VOX fragments declared in `sounds/manifest.json`, normalizes them locally, and overwrites the eight final files in `assets/`. Source fragments and normalized intermediate files stay ignored under `sounds/source/` and `sounds/normalized/`.
+The builder downloads the VOX fragments declared in `sounds/manifest.json`, normalizes them locally, prefixes each phrase with `vox/buzwarn.wav`, and overwrites the seven final files in `assets/`. Source fragments and normalized intermediate files stay ignored under `sounds/source/` and `sounds/normalized/`.
 
 To explore other Half-Life sounds and create different phrases, browse [HL1SFX](https://hl1sfx.com/) and update `sounds/manifest.json` before rebuilding.
 
@@ -191,7 +194,7 @@ If the desktop app is open, quit and reopen it once so its embedded Codex proces
 
 ## Additional sounds and credits
 
-- Original sound fragments were located and downloaded through [HL1SFX](https://hl1sfx.com/), which is also the recommended catalog for finding additional Half-Life sounds.
+- Original sound fragments, including `vox/buzwarn.wav`, were located and downloaded through [HL1SFX](https://hl1sfx.com/), which is also the recommended catalog for finding additional Half-Life sounds.
 - Half-Life, its names, and its original audio assets were created by and belong to Valve Corporation.
 - The Codex hook integration and phrase arrangements in this repository were created by [viniciusczanini](https://github.com/viniciusczanini).
 

@@ -143,6 +143,26 @@ class InstallRoundTripTests(unittest.TestCase):
         self.assertNotIn(old_command, commands)
         self.assertEqual(commands.count(new_command), len(EVENTS))
 
+    def test_reinstall_removes_obsolete_subagent_hook(self):
+        command = "/usr/bin/python3 {0}".format(self.project / "src" / "intercom.py")
+        hooks_path = self.codex_home / "hooks.json"
+        hooks_path.write_text(json.dumps({
+            "hooks": {
+                "SubagentStop": [{"hooks": [{"type": "command", "command": command}]}]
+            }
+        }), encoding="utf-8")
+        runtime = self.codex_home / "codex-intercom"
+        runtime.mkdir()
+        (runtime / "install.json").write_text(json.dumps({
+            "command": command,
+            "hooks_file_existed": True,
+        }), encoding="utf-8")
+
+        install(self.codex_home, self.project, skip_build=True)
+
+        installed = json.loads(hooks_path.read_text(encoding="utf-8"))
+        self.assertNotIn("SubagentStop", installed.get("hooks", {}))
+
 
 if __name__ == "__main__":
     unittest.main()
