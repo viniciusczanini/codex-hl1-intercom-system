@@ -161,6 +161,10 @@ def _expanded_sequence(sequence):
     return expanded
 
 
+def phrase_sequence(sequence):
+    return ["buzwarn", "pause_sentence"] + list(sequence)
+
+
 def _concat(ffmpeg, inputs, destination, runner):
     destination.parent.mkdir(parents=True, exist_ok=True)
     descriptor, list_name = tempfile.mkstemp(
@@ -256,7 +260,7 @@ def build_all(root=None, runner=subprocess.run):
         pause_files[name] = destination
 
     for name, sequence in manifest["phrases"].items():
-        expanded = _expanded_sequence(sequence)
+        expanded = _expanded_sequence(phrase_sequence(sequence))
         inputs = [normalized.get(token) or pause_files[token] for token in expanded]
         destination = generated_dir / (name + ".wav")
         _concat(ffmpeg, inputs, destination, runner)

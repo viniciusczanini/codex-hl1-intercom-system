@@ -1,5 +1,6 @@
 {
   "fragments": {
+    "buzwarn": "vox/buzwarn.wav",
     "processing": "vox/processing.wav",
     "attention": "vox/attention.wav",
     "security": "vox/security.wav",

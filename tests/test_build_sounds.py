@@ -3,13 +3,28 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.build_sounds import load_manifest, source_url, validate_manifest
+from scripts.build_sounds import (
+    load_manifest,
+    phrase_sequence,
+    source_url,
+    validate_manifest,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class SoundBuilderTests(unittest.TestCase):
+    def test_every_spoken_phrase_is_prefixed_with_buzwarn(self):
+        manifest = load_manifest(ROOT / "sounds" / "manifest.json")
+        self.assertEqual(manifest["fragments"]["buzwarn"], "vox/buzwarn.wav")
+        for name, sequence in manifest["phrases"].items():
+            with self.subTest(phrase=name):
+                self.assertEqual(
+                    phrase_sequence(sequence)[:2],
+                    ["buzwarn", "pause_sentence"],
+                )
+
     def test_response_required_phrase_omits_only_user(self):
         manifest = load_manifest(ROOT / "sounds" / "manifest.json")
         self.assertEqual(
