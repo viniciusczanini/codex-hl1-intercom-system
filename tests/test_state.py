@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import json
 from pathlib import Path
 
 from codex_intercom.state import StateStore
@@ -43,12 +44,38 @@ class StateStoreTests(unittest.TestCase):
         self.assertFalse(next_prompt.previous_pending)
         self.assertEqual(next_prompt.batch_count, 1)
 
-    def test_sessions_do_not_share_state(self):
+    def test_completion_waits_for_all_active_sessions(self):
         self.store.prompt_started("s1")
+        self.store.prompt_started("s2")
         self.store.completion_pending("s1", "t1", "token-1")
-        other = self.store.prompt_started("s2")
-        self.assertFalse(other.previous_pending)
-        self.assertEqual(other.batch_count, 1)
+        self.assertIsNone(self.store.finalize("s1", "token-1").announcement)
+
+        self.store.completion_pending("s2", "t2", "token-2")
+        final = self.store.finalize("s2", "token-2")
+
+        self.assertEqual(final.announcement, "queue_complete")
+
+    def test_attention_does_not_close_an_unrelated_active_session(self):
+        self.store.prompt_started("s1")
+        self.store.prompt_started("s2")
+        self.store.close_attention("s1")
+        self.store.completion_pending("s2", "t2", "token-2")
+        self.assertEqual(
+            self.store.finalize("s2", "token-2").announcement,
+            "task_complete",
+        )
+
+    def test_old_global_schema_loads_without_active_sessions(self):
+        state_path, _ = self.store._global_paths()
+        state_path.write_text(json.dumps({
+            "batch_count": 1,
+            "pending_token": "legacy-token",
+            "pending_turn": "legacy-turn",
+        }), encoding="utf-8")
+
+        final = self.store.finalize("legacy-session", "legacy-token")
+
+        self.assertEqual(final.announcement, "task_complete")
 
 
 if __name__ == "__main__":

@@ -84,11 +84,12 @@ If the ChatGPT desktop app was already running when the hooks were installed, qu
 
 ## Queue inference
 
-Codex hooks do not expose queue length. Intercom therefore holds a normal completion for four seconds:
+Codex hooks do not expose a desktop-wide queue length. `Stop` ends one turn, not necessarily every task in the app. Intercom therefore aggregates activity across all observed `session_id` values and holds global completion for four seconds:
 
 - If another prompt starts in that window, the previous task is announced as a queue item.
+- If any other session is still active, completion remains silent until the last active session stops.
 - If nothing follows, a one-item batch gets `task_complete`.
-- A batch with two or more items gets exactly one `queue_complete` announcement.
+- A sequential or concurrent batch with two or more completed tasks gets exactly one `queue_complete` announcement.
 - Questions and blocked states close the batch immediately and never produce a false queue-complete sound.
 
 Adjust `queue_idle_seconds` in `config.json` if queued prompts on your machine take longer to start.

@@ -171,6 +171,41 @@ class RuntimeTests(unittest.TestCase):
             ("task_complete", "session-1", None),
         )
 
+    def test_completion_waits_for_other_active_session(self):
+        handle_event(self.event("UserPromptSubmit"), self.context)
+        handle_event(
+            self.event("UserPromptSubmit", session_id="session-2"),
+            self.context,
+        )
+        handle_event(
+            self.event("Stop", turn_id="turn-1", last_assistant_message="Done."),
+            self.context,
+        )
+        self.player.played.clear()
+        self.notifier.calls.clear()
+
+        finalize_event("session-1", "token-1", self.context)
+
+        self.assertEqual(self.player.played, [])
+        self.assertEqual(self.notifier.calls, [])
+
+        handle_event(
+            self.event(
+                "Stop",
+                session_id="session-2",
+                turn_id="turn-2",
+                last_assistant_message="Done.",
+            ),
+            self.context,
+        )
+        finalize_event("session-2", "token-1", self.context)
+
+        self.assertEqual(self.player.played, ["queue_complete"])
+        self.assertEqual(
+            self.notifier.calls,
+            [("queue_complete", "session-2", None)],
+        )
+
     def test_disabled_audio_does_not_disable_alokium(self):
         self.config["announcements"]["permission_required"] = False
         handle_event(self.event("PermissionRequest"), self.context)

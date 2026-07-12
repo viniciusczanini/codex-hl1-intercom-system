@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import tempfile
@@ -25,33 +24,63 @@ class StateStore:
         self.root.mkdir(parents=True, exist_ok=True)
 
     def prompt_started(self, session_id):
-        with self._locked(session_id) as state:
+        with self._locked_global() as state:
             previous_pending = bool(state.get("pending_token"))
-            count = int(state.get("batch_count", 0)) + 1
+            active = set(state.get("active_sessions", []))
+            if session_id not in active:
+                active.add(session_id)
+                state["batch_count"] = int(state.get("batch_count", 0)) + 1
+            count = int(state.get("batch_count", 0))
             state.update(
-                batch_count=count,
+                active_sessions=sorted(active),
                 pending_token=None,
                 pending_turn=None,
+                pending_session=None,
             )
             return PromptTransition(previous_pending, count)
 
     def completion_pending(self, session_id, turn_id, token):
-        with self._locked(session_id) as state:
+        with self._locked_global() as state:
+            active = set(state.get("active_sessions", []))
+            active.discard(session_id)
             count = max(1, int(state.get("batch_count", 0)))
             state.update(
+                active_sessions=sorted(active),
                 batch_count=count,
                 pending_token=token,
                 pending_turn=turn_id,
+                pending_session=session_id,
             )
 
     def close_attention(self, session_id):
-        with self._locked(session_id) as state:
-            state.clear()
-            state.update(self._empty_state())
+        with self._locked_global() as state:
+            active = set(state.get("active_sessions", []))
+            participated = session_id in active or state.get("pending_session") == session_id
+            active.discard(session_id)
+            if participated:
+                state["batch_count"] = max(0, int(state.get("batch_count", 0)) - 1)
+            if state.get("pending_session") == session_id:
+                state.update(
+                    pending_token=None,
+                    pending_turn=None,
+                    pending_session=None,
+                )
+            state["active_sessions"] = sorted(active)
+            if int(state.get("batch_count", 0)) == 0 and not active:
+                state.clear()
+                state.update(self._empty_state())
 
     def finalize(self, session_id, token):
-        with self._locked(session_id) as state:
+        del session_id
+        with self._locked_global() as state:
             if state.get("pending_token") != token:
+                return FinalizeTransition(None)
+            if state.get("active_sessions"):
+                state.update(
+                    pending_token=None,
+                    pending_turn=None,
+                    pending_session=None,
+                )
                 return FinalizeTransition(None)
             name = (
                 "queue_complete"
@@ -68,15 +97,21 @@ class StateStore:
             "batch_count": 0,
             "pending_token": None,
             "pending_turn": None,
+            "pending_session": None,
+            "active_sessions": [],
         }
 
-    def _paths(self, session_id):
-        digest = hashlib.sha256((session_id or "unknown").encode("utf-8")).hexdigest()
-        return self.root / (digest + ".json"), self.root / (digest + ".lock")
+    def _global_paths(self):
+        return self.root / "global.json", self.root / "global.lock"
 
     @contextmanager
-    def _locked(self, session_id):
-        state_path, lock_path = self._paths(session_id)
+    def _locked_global(self):
+        state_path, lock_path = self._global_paths()
+        with self._locked_paths(state_path, lock_path) as state:
+            yield state
+
+    @contextmanager
+    def _locked_paths(self, state_path, lock_path):
         lock_path.touch(exist_ok=True)
         with lock_path.open("r+", encoding="utf-8") as lock_file:
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)

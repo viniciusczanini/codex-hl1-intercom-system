@@ -79,6 +79,8 @@ Set any announcement to `false` to mute only that event. Missing announcement ke
 
 `queue_idle_seconds` controls how long the intercom waits for another prompt before announcing that a task or queue has finished. Increase it if queued prompts on your machine routinely take more than four seconds to begin.
 
+Completion is aggregated across Codex sessions. A `Stop` from one task cannot play “Objective secured” while another observed session remains active. The last session to stop starts the global idle window and produces one final task or queue announcement.
+
 Set `alokium_enabled` to `false` to disable LED notifications while keeping audio active.
 
 Invalid configuration does not interrupt Codex. The event is skipped and the error is written to `~/.codex/codex-intercom/intercom.log`.
