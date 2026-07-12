@@ -39,6 +39,8 @@ After installation:
 
 The desktop app loads hook definitions when its embedded Codex process starts. This restart is only needed after installing or changing hook definitions. Editing announcement toggles in `config.json` takes effect on the next event without another restart.
 
+If the separate `codex_alokium_intercom` repository exists beside this checkout, this hook also forwards its raw `PermissionRequest` and `Stop` events to that adapter. No second hook definition or desktop restart is required for the LED bridge; each event launches the adapter from disk through the already-loaded Black Mesa entrypoint.
+
 ## Announcements
 
 | Setting | Phrase | Trigger |
@@ -123,6 +125,8 @@ Useful trace stages include:
 - `play_attempted`: audio playback was started.
 - `play_suppressed`: the announcement is disabled in `config.json`.
 - `hook_failed`: the hook raised an error.
+- `alokium_bridge_forwarded`: the event was passed to the separate Alokium adapter.
+- `alokium_bridge_skipped`: the optional adapter file was not found.
 
 ### Check runtime errors
 

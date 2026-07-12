@@ -41,6 +41,21 @@ Set an announcement to `false` to mute only that announcement. Missing announcem
 
 The shipped configuration keeps `task_started` muted to avoid a sound on every submitted prompt. Set it to `true` if you want the “Processing” announcement.
 
+## Optional Alokium LED bridge
+
+When the separate `codex_alokium_intercom` project is installed beside this checkout, the already-loaded Black Mesa hook forwards `PermissionRequest` and `Stop` events to it automatically. This keeps Alokium credentials, device filtering, and RGB restoration outside this repository while allowing the sound and LED notification to react to the same event.
+
+Expected sibling layout:
+
+```text
+projects/
+├── codex-intercom/
+├── codex_alokium_intercom/
+└── alokium_notifications/
+```
+
+Set `CODEX_ALOKIUM_ADAPTER` to an explicit `intercom.py` path when the projects are not siblings. The bridge is inactive when the adapter file is absent. Internal Half-Life queue finalizers are not forwarded, so one Codex event produces one LED notification.
+
 ## Install
 
 Requirements:
@@ -110,7 +125,7 @@ Hook execution is recorded as metadata-only JSON Lines in `/tmp/codex-intercom-h
 tail -f /tmp/codex-intercom-hooks.log
 ```
 
-The trace contains event, session, classification, scheduling, and playback status. It does not store prompt or assistant-message content, and macOS may remove it after a reboot.
+The trace contains event, session, classification, scheduling, playback status, and optional `alokium_bridge_forwarded`/`alokium_bridge_skipped` stages. It does not store prompt or assistant-message content, and macOS may remove it after a reboot.
 
 ## Sound assets
 
