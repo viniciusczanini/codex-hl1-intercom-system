@@ -187,6 +187,35 @@ class StateStoreTests(unittest.TestCase):
             "turn_id": "turn-1",
         })
 
+    def test_session_start_silently_reconciles_legacy_state(self):
+        lifecycle = FakeLifecycle({
+            "active-s1": LifecycleResult("active"),
+            "complete-s2": LifecycleResult("complete"),
+            "missing-s3": LifecycleResult("missing"),
+        })
+        store = StateStore(
+            Path(self.temp_dir.name) / "session-reconcile",
+            lifecycle=lifecycle,
+        )
+        state_path, _ = store._global_paths()
+        state_path.write_text(json.dumps({
+            "active_sessions": ["active-s1", "complete-s2", "missing-s3"],
+            "batch_count": 3,
+            "pending_token": None,
+            "pending_turn": None,
+            "pending_session": None,
+        }), encoding="utf-8")
+
+        reconciled = store.session_started("new-session", "/tmp/new.jsonl")
+
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(set(state["active_sessions"]), {"active-s1"})
+        self.assertEqual(reconciled, (
+            ("active-s1", "active", None),
+            ("complete-s2", "complete", None),
+            ("missing-s3", "missing", None),
+        ))
+
 
 if __name__ == "__main__":
     unittest.main()

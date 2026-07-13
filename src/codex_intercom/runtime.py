@@ -180,10 +180,17 @@ def handle_event(event, context):
     elif event_name == "SubagentStop":
         context.trace("subagent_stop_ignored", session_id=session_id)
     elif event_name == "SessionStart":
-        context.state.session_started(
+        reconciled = context.state.session_started(
             session_id,
             event.get("transcript_path"),
         )
+        for reconciled_session, status, error_type in reconciled:
+            context.trace(
+                "session_reconciled",
+                session_id=reconciled_session,
+                status=status,
+                error_type=error_type,
+            )
         context.trace(
             "session_state_refreshed",
             session_id=session_id,

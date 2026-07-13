@@ -155,6 +155,36 @@ class RuntimeTests(unittest.TestCase):
         self.assertEqual(self.notifier.calls, [])
         self.assertEqual(self.scheduler.calls, [])
 
+    def test_session_start_traces_silent_reconciliation(self):
+        lifecycle = FakeLifecycle({"legacy-session": LifecycleResult("complete")})
+        state = StateStore(
+            Path(self.temp_dir.name) / "session-start-reconcile",
+            lifecycle=lifecycle,
+        )
+        state.prompt_started("legacy-session", "/tmp/legacy.jsonl", "turn-1")
+        context = RuntimeContext(
+            config=self.config,
+            state=state,
+            player=self.player,
+            scheduler=self.scheduler,
+            notifier=self.notifier,
+            trace=lambda stage, **fields: self.traces.append((stage, fields)),
+        )
+
+        handle_event(
+            self.event("SessionStart", transcript_path="/tmp/new.jsonl"),
+            context,
+        )
+
+        records = [fields for stage, fields in self.traces if stage == "session_reconciled"]
+        self.assertEqual(records, [{
+            "session_id": "legacy-session",
+            "status": "complete",
+            "error_type": None,
+        }])
+        self.assertEqual(self.player.played, [])
+        self.assertEqual(self.notifier.calls, [])
+
     def test_production_context_uses_bundled_assets(self):
         context = create_context(
             root=ROOT,

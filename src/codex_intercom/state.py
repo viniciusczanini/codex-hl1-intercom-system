@@ -54,7 +54,9 @@ class StateStore:
             active = self._active_records(state)
             if session_id in active and transcript_path:
                 active[session_id]["transcript_path"] = str(transcript_path)
+            reconciled = self._reconcile(active)
             state["active_sessions"] = active
+            return reconciled
 
     def completion_pending(self, session_id, turn_id, token):
         with self._locked_global() as state:
@@ -93,23 +95,7 @@ class StateStore:
             if state.get("pending_token") != token:
                 return FinalizeTransition(None)
             active = self._active_records(state)
-            reconciled = []
-            if self.lifecycle is not None:
-                for active_session, metadata in list(active.items()):
-                    result = self.lifecycle.inspect(
-                        active_session,
-                        metadata.get("transcript_path"),
-                        metadata.get("turn_id"),
-                    )
-                    reconciled.append((
-                        active_session,
-                        result.status,
-                        result.error_type,
-                    ))
-                    if result.status in ("complete", "missing"):
-                        del active[active_session]
-                    elif result.path and not metadata.get("transcript_path"):
-                        metadata["transcript_path"] = str(result.path)
+            reconciled = self._reconcile(active)
             state["active_sessions"] = active
             if active:
                 state.update(
@@ -126,6 +112,27 @@ class StateStore:
             state.clear()
             state.update(self._empty_state())
             return FinalizeTransition(name, tuple(reconciled))
+
+    def _reconcile(self, active):
+        reconciled = []
+        if self.lifecycle is None:
+            return tuple(reconciled)
+        for active_session, metadata in list(active.items()):
+            result = self.lifecycle.inspect(
+                active_session,
+                metadata.get("transcript_path"),
+                metadata.get("turn_id"),
+            )
+            reconciled.append((
+                active_session,
+                result.status,
+                result.error_type,
+            ))
+            if result.status in ("complete", "missing"):
+                del active[active_session]
+            elif result.path and not metadata.get("transcript_path"):
+                metadata["transcript_path"] = str(result.path)
+        return tuple(reconciled)
 
     @staticmethod
     def _active_records(state):
