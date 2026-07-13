@@ -78,7 +78,7 @@ The seven final WAV announcements are included in `assets/`, so normal installat
 
 The installer preserves unrelated hooks and does not modify `~/.codex/config.toml` or its existing `notify` command. It is idempotent, so rerunning it does not create duplicate handlers.
 
-After installation, open `/hooks` in Codex and trust the three entries labelled **Black Mesa intercom**. Codex hashes hook definitions; changed definitions must be reviewed again.
+After installation, open `/hooks` in Codex and trust the four entries labelled **Black Mesa intercom**. Codex hashes hook definitions; changed definitions must be reviewed again.
 
 If the ChatGPT desktop app was already running when the hooks were installed, quit and reopen it once. Its embedded `codex app-server` loads hook definitions when the process starts. Announcement booleans in `config.json` are read on every event and do not require another restart.
 
@@ -88,6 +88,8 @@ Codex hooks do not expose a desktop-wide queue length. `Stop` ends one turn, not
 
 - If another prompt starts in that window, the previous task is announced as a queue item.
 - If any other session is still active, completion remains silent until the last active session stops.
+- Before deciding, Intercom reads the bounded tail of Codex's own transcript and removes sessions whose persisted turn already reached `task_complete` or no longer exists.
+- There is no task timeout: a transcript ending in `task_started` remains active regardless of how long the task runs.
 - If nothing follows, a one-item batch gets `task_complete`.
 - A sequential or concurrent batch with two or more completed tasks gets exactly one `queue_complete` announcement.
 - Questions and blocked states close the batch immediately and never produce a false queue-complete sound.
@@ -129,7 +131,7 @@ Hook execution is recorded as metadata-only JSON Lines in `/tmp/codex-intercom-h
 tail -f /tmp/codex-intercom-hooks.log
 ```
 
-The trace contains event, session, classification, scheduling, playback, and semantic Alokium dispatch status. It does not store prompt or assistant-message content, and macOS may remove it after a reboot.
+The trace contains event, session, classification, scheduling, transcript lifecycle classification, playback, and semantic Alokium dispatch status. `session_reconciled` records show whether another session was `active`, `complete`, `missing`, or `unreadable`. It does not store transcript paths, prompts, or assistant-message content, and macOS may remove it after a reboot.
 
 ## Sound assets
 

@@ -23,7 +23,7 @@ The installer:
 
 1. Validates every bundled WAV in `assets/`.
 2. Preserves unrelated handlers already present in `~/.codex/hooks.json`.
-3. Adds three intercom handlers for `UserPromptSubmit`, `PermissionRequest`, and `Stop`.
+3. Adds four intercom handlers for `SessionStart`, `UserPromptSubmit`, `PermissionRequest`, and `Stop`.
 4. Leaves `~/.codex/config.toml` and its existing `notify` command unchanged.
 5. Records installation ownership in `~/.codex/codex-intercom/install.json` so uninstalling removes only this project.
 
@@ -34,7 +34,7 @@ Running the installer again is safe and does not duplicate hooks.
 After installation:
 
 1. Open `/hooks` in Codex.
-2. Review and trust the three entries labelled **Black Mesa intercom**.
+2. Review and trust the four entries labelled **Black Mesa intercom**.
 3. If the ChatGPT desktop app was already open during installation, quit it normally and reopen it once.
 
 The desktop app loads hook definitions when its embedded Codex process starts. This restart is only needed after installing or changing hook definitions. Editing announcement toggles in `config.json` takes effect on the next event without another restart.
@@ -79,7 +79,9 @@ Set any announcement to `false` to mute only that event. Missing announcement ke
 
 `queue_idle_seconds` controls how long the intercom waits for another prompt before announcing that a task or queue has finished. Increase it if queued prompts on your machine routinely take more than four seconds to begin.
 
-Completion is aggregated across Codex sessions. A `Stop` from one task cannot play “Final objective reached” while another observed session remains active. The last session to stop starts the global idle window and produces one final task or queue announcement.
+Completion is aggregated across Codex sessions. A `Stop` from one task cannot play “Final objective reached” while another observed session remains active. Before the final decision, Intercom checks the bounded tail of each Codex transcript for its real `task_started` or `task_complete` lifecycle. This repairs sessions left behind when an interrupted task never emits `Stop`.
+
+There is no task timeout. A persisted task ending in `task_started` remains active no matter how long it runs. `SessionStart` is silent and only refreshes lifecycle metadata after startup, resume, clear, or compaction.
 
 Set `alokium_enabled` to `false` to disable LED notifications while keeping audio active.
 
@@ -131,6 +133,8 @@ Useful trace stages include:
 - `play_suppressed`: the announcement is disabled in `config.json`.
 - `hook_failed`: the hook raised an error.
 - `announcement_dispatched`: audio and semantic Alokium results for one finalized announcement.
+- `session_state_refreshed`: a silent `SessionStart` refreshed persisted metadata.
+- `session_reconciled`: another session was classified as `active`, `complete`, `missing`, or conservatively `unreadable` from its transcript.
 - `subagent_stop_ignored`: an internal subagent event was intentionally silenced.
 
 ### Check runtime errors
@@ -143,7 +147,7 @@ This log reports invalid configuration, missing sound files, and playback-launch
 
 ### No hook events appear
 
-1. Confirm the three entries exist and are trusted in `/hooks`.
+1. Confirm the four entries exist and are trusted in `/hooks`.
 2. Confirm `~/.codex/hooks.json` points to the current clone.
 3. Quit and reopen the ChatGPT desktop app once.
 4. Rerun `/usr/bin/python3 scripts/install.py` if the repository was moved.
@@ -155,6 +159,7 @@ The installer automatically removes its stale command when reinstalling from a n
 1. Check that the event is enabled in `config.json`.
 2. Play one file directly with `/usr/bin/afplay assets/task_complete.wav`.
 3. Inspect both logs above for `play_suppressed`, `missing sound`, or `playback failed`.
+4. Inspect `session_reconciled` records. `active` means another transcript still has running work; `unreadable` fails conservatively and should be checked for file access or malformed JSONL.
 
 ## Update
 
