@@ -3,7 +3,18 @@ import unittest
 import json
 from pathlib import Path
 
+from codex_intercom.lifecycle import LifecycleResult
 from codex_intercom.state import StateStore
+
+
+class FakeLifecycle:
+    def __init__(self, results=None):
+        self.results = results or {}
+        self.calls = []
+
+    def inspect(self, session_id, transcript_path=None, turn_id=None):
+        self.calls.append((session_id, transcript_path, turn_id))
+        return self.results.get(session_id, LifecycleResult("active"))
 
 
 class StateStoreTests(unittest.TestCase):
@@ -76,6 +87,105 @@ class StateStoreTests(unittest.TestCase):
         final = self.store.finalize("legacy-session", "legacy-token")
 
         self.assertEqual(final.announcement, "task_complete")
+
+    def test_prompt_records_transcript_and_turn_metadata(self):
+        self.store.prompt_started("s1", "/tmp/rollout-s1.jsonl", "turn-1")
+
+        state_path, _ = self.store._global_paths()
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(state["active_sessions"], {
+            "s1": {
+                "transcript_path": "/tmp/rollout-s1.jsonl",
+                "turn_id": "turn-1",
+            }
+        })
+
+    def test_fresh_active_transcript_still_blocks_completion(self):
+        lifecycle = FakeLifecycle({"s2": LifecycleResult("active")})
+        store = StateStore(Path(self.temp_dir.name) / "active", lifecycle=lifecycle)
+        store.prompt_started("s1", "/tmp/s1.jsonl", "t1")
+        store.prompt_started("s2", "/tmp/s2.jsonl", "t2")
+        store.completion_pending("s1", "t1", "token-1")
+
+        final = store.finalize("s1", "token-1")
+
+        self.assertIsNone(final.announcement)
+        self.assertEqual(final.reconciled, (("s2", "active", None),))
+
+    def test_completed_transcript_no_longer_blocks_completion(self):
+        lifecycle = FakeLifecycle({"s2": LifecycleResult("complete")})
+        store = StateStore(Path(self.temp_dir.name) / "complete", lifecycle=lifecycle)
+        store.prompt_started("s1", "/tmp/s1.jsonl", "t1")
+        store.prompt_started("s2", "/tmp/s2.jsonl", "t2")
+        store.completion_pending("s1", "t1", "token-1")
+
+        final = store.finalize("s1", "token-1")
+
+        self.assertEqual(final.announcement, "queue_complete")
+        self.assertEqual(final.reconciled, (("s2", "complete", None),))
+
+    def test_missing_ephemeral_transcript_no_longer_blocks_completion(self):
+        lifecycle = FakeLifecycle({"s2": LifecycleResult("missing")})
+        store = StateStore(Path(self.temp_dir.name) / "missing", lifecycle=lifecycle)
+        store.prompt_started("s1", "/tmp/s1.jsonl", "t1")
+        store.prompt_started("s2")
+        store.completion_pending("s1", "t1", "token-1")
+
+        final = store.finalize("s1", "token-1")
+
+        self.assertEqual(final.announcement, "queue_complete")
+
+    def test_unreadable_transcript_remains_conservatively_active(self):
+        lifecycle = FakeLifecycle({
+            "s2": LifecycleResult("unreadable", error_type="PermissionError")
+        })
+        store = StateStore(Path(self.temp_dir.name) / "unreadable", lifecycle=lifecycle)
+        store.prompt_started("s1", "/tmp/s1.jsonl", "t1")
+        store.prompt_started("s2", "/tmp/s2.jsonl", "t2")
+        store.completion_pending("s1", "t1", "token-1")
+
+        final = store.finalize("s1", "token-1")
+
+        self.assertIsNone(final.announcement)
+        self.assertEqual(
+            final.reconciled,
+            (("s2", "unreadable", "PermissionError"),),
+        )
+
+    def test_legacy_list_state_discovers_and_preserves_active_transcript(self):
+        lifecycle = FakeLifecycle({"legacy-s2": LifecycleResult("active")})
+        store = StateStore(Path(self.temp_dir.name) / "legacy", lifecycle=lifecycle)
+        state_path, _ = store._global_paths()
+        state_path.write_text(json.dumps({
+            "active_sessions": ["legacy-s2"],
+            "batch_count": 2,
+            "pending_token": "token-1",
+            "pending_turn": "t1",
+            "pending_session": "s1",
+        }), encoding="utf-8")
+
+        final = store.finalize("s1", "token-1")
+
+        self.assertIsNone(final.announcement)
+        self.assertEqual(lifecycle.calls, [("legacy-s2", None, None)])
+
+    def test_session_start_updates_metadata_without_creating_active_work(self):
+        lifecycle = FakeLifecycle()
+        store = StateStore(Path(self.temp_dir.name) / "session-start", lifecycle=lifecycle)
+
+        store.session_started("s1", "/tmp/initial.jsonl")
+        state_path, _ = store._global_paths()
+        initial = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(initial["active_sessions"], {})
+
+        store.prompt_started("s1", None, "turn-1")
+        store.session_started("s1", "/tmp/resumed.jsonl")
+        resumed = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(resumed["active_sessions"]["s1"], {
+            "transcript_path": "/tmp/resumed.jsonl",
+            "turn_id": "turn-1",
+        })
 
 
 if __name__ == "__main__":
