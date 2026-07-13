@@ -12,6 +12,7 @@ import fcntl
 from codex_intercom.audio import AudioPlayer, append_log
 from codex_intercom.classifier import classify_stop
 from codex_intercom.config import announcement_enabled, load_config
+from codex_intercom.lifecycle import TranscriptLifecycle
 from codex_intercom.state import StateStore
 
 
@@ -178,8 +179,22 @@ def handle_event(event, context):
         )
     elif event_name == "SubagentStop":
         context.trace("subagent_stop_ignored", session_id=session_id)
+    elif event_name == "SessionStart":
+        context.state.session_started(
+            session_id,
+            event.get("transcript_path"),
+        )
+        context.trace(
+            "session_state_refreshed",
+            session_id=session_id,
+            source=event.get("source"),
+        )
     elif event_name == "UserPromptSubmit":
-        transition = context.state.prompt_started(session_id)
+        transition = context.state.prompt_started(
+            session_id,
+            event.get("transcript_path"),
+            event.get("turn_id"),
+        )
         context.trace(
             "prompt_state_updated",
             session_id=session_id,
@@ -207,6 +222,13 @@ def handle_event(event, context):
 
 def finalize_event(session_id, token, context):
     transition = context.state.finalize(session_id, token)
+    for reconciled_session, status, error_type in transition.reconciled:
+        context.trace(
+            "session_reconciled",
+            session_id=reconciled_session,
+            status=status,
+            error_type=error_type,
+        )
     context.trace(
         "finalizer_decision",
         session_id=session_id,
@@ -232,9 +254,10 @@ def create_context(root=None, codex_home=None):
     codex_home = codex_home or default_codex_home()
     runtime_root = codex_home / "codex-intercom"
     log_path = runtime_root / "intercom.log"
+    lifecycle = TranscriptLifecycle(codex_home / "sessions")
     return RuntimeContext(
         config=load_config(root / "config.json"),
-        state=StateStore(runtime_root / "state"),
+        state=StateStore(runtime_root / "state", lifecycle=lifecycle),
         player=AudioPlayer(root / "assets", log_path),
         scheduler=FinalizerScheduler(root / "src" / "intercom.py"),
         notifier=SemanticNotifier(),

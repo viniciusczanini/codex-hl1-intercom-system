@@ -41,6 +41,7 @@ class HookMergeTests(unittest.TestCase):
         commands = extract_commands(merged)
         self.assertIn("other", commands)
         self.assertEqual(commands.count(INTERCOM_COMMAND), len(EVENTS))
+        self.assertIn("SessionStart", EVENTS)
 
     def test_repeated_merge_is_idempotent(self):
         once = merge_hooks({}, INTERCOM_COMMAND)
@@ -51,6 +52,20 @@ class HookMergeTests(unittest.TestCase):
         installed = merge_hooks(self.existing, INTERCOM_COMMAND)
         cleaned = remove_owned_hooks(installed, INTERCOM_COMMAND)
         self.assertEqual(cleaned, self.existing)
+
+    def test_uninstall_preserves_unrelated_session_start_hook(self):
+        existing = {
+            "hooks": {
+                "SessionStart": [
+                    {"hooks": [{"type": "command", "command": "other-start"}]}
+                ]
+            }
+        }
+        installed = merge_hooks(existing, INTERCOM_COMMAND)
+
+        cleaned = remove_owned_hooks(installed, INTERCOM_COMMAND)
+
+        self.assertEqual(cleaned, existing)
 
 
 class InstallRoundTripTests(unittest.TestCase):

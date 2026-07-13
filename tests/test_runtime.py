@@ -14,6 +14,7 @@ from codex_intercom.runtime import (
     main,
     trace_event,
 )
+from codex_intercom.lifecycle import LifecycleResult
 from codex_intercom.state import StateStore
 
 
@@ -47,6 +48,14 @@ class FakeNotifier:
         return self.result
 
 
+class FakeLifecycle:
+    def __init__(self, results):
+        self.results = results
+
+    def inspect(self, session_id, transcript_path=None, turn_id=None):
+        return self.results[session_id]
+
+
 class RuntimeTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -55,6 +64,7 @@ class RuntimeTests(unittest.TestCase):
         self.player = FakePlayer()
         self.scheduler = FakeScheduler()
         self.notifier = FakeNotifier()
+        self.traces = []
         self.config = {
             "announcements": {
                 "task_started": True,
@@ -75,6 +85,7 @@ class RuntimeTests(unittest.TestCase):
             scheduler=self.scheduler,
             notifier=self.notifier,
             token_factory=lambda: "token-1",
+            trace=lambda stage, **fields: self.traces.append((stage, fields)),
         )
 
     def event(self, name, **values):
@@ -86,6 +97,63 @@ class RuntimeTests(unittest.TestCase):
         output = handle_event(self.event("PermissionRequest"), self.context)
         self.assertEqual(self.player.played, ["permission_required"])
         self.assertEqual(output, {})
+
+    def test_prompt_records_transcript_and_turn_metadata(self):
+        handle_event(
+            self.event(
+                "UserPromptSubmit",
+                transcript_path="/tmp/rollout-session-1.jsonl",
+                turn_id="turn-1",
+            ),
+            self.context,
+        )
+
+        state_path, _ = self.state._global_paths()
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(state["active_sessions"]["session-1"], {
+            "transcript_path": "/tmp/rollout-session-1.jsonl",
+            "turn_id": "turn-1",
+        })
+
+    def test_session_start_is_silent_and_only_refreshes_existing_metadata(self):
+        handle_event(
+            self.event(
+                "SessionStart",
+                transcript_path="/tmp/initial.jsonl",
+                source="startup",
+            ),
+            self.context,
+        )
+        state_path, _ = self.state._global_paths()
+        initial = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(initial["active_sessions"], {})
+
+        handle_event(
+            self.event("UserPromptSubmit", turn_id="turn-1"),
+            self.context,
+        )
+        self.player.played.clear()
+        self.notifier.calls.clear()
+        self.scheduler.calls.clear()
+
+        output = handle_event(
+            self.event(
+                "SessionStart",
+                transcript_path="/tmp/resumed.jsonl",
+                source="compact",
+            ),
+            self.context,
+        )
+
+        resumed = json.loads(state_path.read_text(encoding="utf-8"))
+        self.assertEqual(output, {})
+        self.assertEqual(resumed["active_sessions"]["session-1"], {
+            "transcript_path": "/tmp/resumed.jsonl",
+            "turn_id": "turn-1",
+        })
+        self.assertEqual(self.player.played, [])
+        self.assertEqual(self.notifier.calls, [])
+        self.assertEqual(self.scheduler.calls, [])
 
     def test_production_context_uses_bundled_assets(self):
         context = create_context(
@@ -170,6 +238,34 @@ class RuntimeTests(unittest.TestCase):
             self.notifier.calls[-1],
             ("task_complete", "session-1", None),
         )
+
+    def test_finalizer_traces_reconciliation_without_transcript_content(self):
+        lifecycle = FakeLifecycle({"session-2": LifecycleResult("complete")})
+        state = StateStore(
+            Path(self.temp_dir.name) / "reconciled-state",
+            lifecycle=lifecycle,
+        )
+        state.prompt_started("session-1", "/tmp/s1.jsonl", "turn-1")
+        state.prompt_started("session-2", "/private/secret/s2.jsonl", "turn-2")
+        state.completion_pending("session-1", "turn-1", "token-1")
+        context = RuntimeContext(
+            config=self.config,
+            state=state,
+            player=self.player,
+            scheduler=self.scheduler,
+            notifier=self.notifier,
+            trace=lambda stage, **fields: self.traces.append((stage, fields)),
+        )
+
+        finalize_event("session-1", "token-1", context)
+
+        records = [fields for stage, fields in self.traces if stage == "session_reconciled"]
+        self.assertEqual(records, [{
+            "session_id": "session-2",
+            "status": "complete",
+            "error_type": None,
+        }])
+        self.assertNotIn("transcript_path", records[0])
 
     def test_completion_waits_for_other_active_session(self):
         handle_event(self.event("UserPromptSubmit"), self.context)

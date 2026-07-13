@@ -17,6 +17,7 @@ except ModuleNotFoundError:
 
 
 EVENTS = (
+    "SessionStart",
     "UserPromptSubmit",
     "PermissionRequest",
     "Stop",
@@ -189,7 +190,7 @@ def main(argv=None):
         print("install failed: {0}".format(exc), file=sys.stderr)
         return 1
     print("Installed Codex intercom hooks in {0}".format(hooks_path))
-    print("Open /hooks in Codex and trust the three Black Mesa intercom definitions.")
+    print("Open /hooks in Codex and trust the four Black Mesa intercom definitions.")
     print("If the ChatGPT desktop app is open, quit and reopen it once to load the hooks.")
     return 0
 
