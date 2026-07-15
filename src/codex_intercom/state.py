@@ -128,7 +128,7 @@ class StateStore:
                 result.status,
                 result.error_type,
             ))
-            if result.status in ("complete", "missing"):
+            if result.status == "complete":
                 del active[active_session]
             elif result.path and not metadata.get("transcript_path"):
                 metadata["transcript_path"] = str(result.path)

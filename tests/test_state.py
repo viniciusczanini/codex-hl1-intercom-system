@@ -125,7 +125,7 @@ class StateStoreTests(unittest.TestCase):
         self.assertEqual(final.announcement, "queue_complete")
         self.assertEqual(final.reconciled, (("s2", "complete", None),))
 
-    def test_missing_ephemeral_transcript_no_longer_blocks_completion(self):
+    def test_missing_transcript_remains_active_until_positive_completion(self):
         lifecycle = FakeLifecycle({"s2": LifecycleResult("missing")})
         store = StateStore(Path(self.temp_dir.name) / "missing", lifecycle=lifecycle)
         store.prompt_started("s1", "/tmp/s1.jsonl", "t1")
@@ -134,7 +134,8 @@ class StateStoreTests(unittest.TestCase):
 
         final = store.finalize("s1", "token-1")
 
-        self.assertEqual(final.announcement, "queue_complete")
+        self.assertIsNone(final.announcement)
+        self.assertEqual(final.reconciled, (("s2", "missing", None),))
 
     def test_unreadable_transcript_remains_conservatively_active(self):
         lifecycle = FakeLifecycle({
@@ -209,7 +210,10 @@ class StateStoreTests(unittest.TestCase):
         reconciled = store.session_started("new-session", "/tmp/new.jsonl")
 
         state = json.loads(state_path.read_text(encoding="utf-8"))
-        self.assertEqual(set(state["active_sessions"]), {"active-s1"})
+        self.assertEqual(
+            set(state["active_sessions"]),
+            {"active-s1", "missing-s3"},
+        )
         self.assertEqual(reconciled, (
             ("active-s1", "active", None),
             ("complete-s2", "complete", None),
