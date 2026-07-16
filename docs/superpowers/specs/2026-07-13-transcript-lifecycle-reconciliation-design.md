@@ -29,8 +29,8 @@ Before a finalizer decides whether the global queue is complete, it reconciles e
 2. Read only a bounded tail of the JSON Lines file, expanding the tail only when needed to locate the latest lifecycle entry for the recorded turn.
 3. Keep the session active when its latest relevant lifecycle entry is `task_started` and no terminal entry follows it.
 4. Remove the session when `task_complete` follows the relevant start. This is the terminal lifecycle event present in the installed Codex transcripts, including turns that finish without a usable `Stop` hook.
-5. Remove a legacy or ephemeral session when no transcript can be found, because it has no persisted task that can still be executing.
-6. If an existing transcript is temporarily unreadable or malformed, retain the session and suppress the announcement. This is the conservative failure mode.
+5. Remove a session when Codex has moved its transcript into `archived_sessions`; archiving is a positive terminal state even if an interrupted turn never wrote `task_complete`.
+6. If a transcript is missing, temporarily unreadable, or malformed, retain the session. The completed item may announce, but final queue completion remains suppressed. This is the conservative failure mode.
 
 The session that emitted the current `Stop` is still removed immediately by the existing completion-pending transition. Reconciliation is for the remaining sessions that could otherwise block the global decision.
 
@@ -51,8 +51,9 @@ No ChatGPT restart is required for state migration after the runtime code change
 1. `UserPromptSubmit` records the active session's transcript and turn.
 2. `Stop` retains the existing response-required, blocked, and delayed-completion classification behavior.
 3. The delayed finalizer reconciles all remaining active sessions from transcripts.
-4. If any session is still active or conservatively unreadable, the finalizer stays silent.
-5. Otherwise, the existing `task_complete` versus `queue_complete` decision dispatches one semantic notification to both audio and Alokium.
+4. A transcript moved to Codex's `archived_sessions` directory is terminal even when an interrupted turn has no `task_complete` record.
+5. If any session is still active or conservatively unreadable, the completed item dispatches `queue_item_complete` while final queue completion remains pending.
+6. Otherwise, the existing `task_complete` versus `queue_complete` decision dispatches one semantic notification to both audio and Alokium.
 
 ## Error Handling and Privacy
 
@@ -69,7 +70,7 @@ Tests must prove:
 - a concurrent transcript ending in `task_started` blocks completion, regardless of age;
 - a concurrent transcript ending in `task_complete` no longer blocks completion;
 - a persisted turn that reaches `task_complete` without a usable `Stop` hook no longer blocks completion;
-- a missing ephemeral transcript no longer blocks completion;
+- a missing transcript keeps final queue completion blocked but does not silence completed queue items;
 - an unreadable or malformed existing transcript remains conservatively active;
 - compaction and `SessionStart` do not produce announcements or clear real active work;
 - legacy list-based state migrates and discovers persisted active transcripts;

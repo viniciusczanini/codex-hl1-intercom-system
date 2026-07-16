@@ -48,7 +48,7 @@ If the separate `codex_alokium_intercom` repository exists beside this checkout,
 | `task_started` | “Processing.” | A prompt or queued task starts |
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
 | `response_required` | “Attention. Communication required. Please acknowledge.” | Codex finishes with a direct question or request |
-| `queue_item_complete` | “Secondary objective secured.” | A new queued prompt follows a completed item |
+| `queue_item_complete` | “Secondary objective secured.” | One item completes while another task remains active |
 | `task_complete` | “Final objective reached.” | One task finishes with no queued successor |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A batch of two or more queued tasks finishes |
 | `blocked` | “Warning. Objective failed. User acknowledge.” | Codex reports that it cannot continue |
@@ -134,7 +134,7 @@ Useful trace stages include:
 - `hook_failed`: the hook raised an error.
 - `announcement_dispatched`: audio and semantic Alokium results for one finalized announcement.
 - `session_state_refreshed`: a silent `SessionStart` refreshed persisted metadata.
-- `session_reconciled`: another session was classified as `active`, `complete`, `missing`, or conservatively `unreadable` from its transcript.
+- `session_reconciled`: another session was classified as `active`, `complete`, `archived`, `missing`, or conservatively `unreadable` from its transcript.
 - `subagent_stop_ignored`: an internal subagent event was intentionally silenced.
 
 ### Check runtime errors

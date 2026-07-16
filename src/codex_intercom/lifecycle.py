@@ -13,14 +13,22 @@ class LifecycleResult:
 class TranscriptLifecycle:
     LIFECYCLE_EVENTS = frozenset(("task_started", "task_complete"))
 
-    def __init__(self, sessions_root, max_tail_bytes=1024 * 1024):
+    def __init__(
+        self,
+        sessions_root,
+        max_tail_bytes=1024 * 1024,
+        archived_root=None,
+    ):
         self.sessions_root = Path(sessions_root)
+        self.archived_root = Path(archived_root) if archived_root else None
         self.max_tail_bytes = int(max_tail_bytes)
 
     def inspect(self, session_id, transcript_path=None, turn_id=None):
-        path = self._resolve_path(session_id, transcript_path)
+        path, archived = self._resolve_path(session_id, transcript_path)
         if path is None:
             return LifecycleResult("missing")
+        if archived:
+            return LifecycleResult("archived", path=path)
         try:
             records = self._tail_records(path)
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -55,25 +63,38 @@ class TranscriptLifecycle:
             candidate = Path(transcript_path).expanduser()
             try:
                 if candidate.is_file():
-                    return candidate
+                    return candidate, self._is_archived(candidate)
             except OSError:
-                return candidate
+                return candidate, self._is_archived(candidate)
 
         pattern = "**/*{0}.jsonl".format(session_id)
+        roots = [(self.sessions_root, False)]
+        if self.archived_root is not None:
+            roots.append((self.archived_root, True))
         try:
             candidates = [
-                path
-                for path in self.sessions_root.glob(pattern)
+                (path, archived)
+                for root, archived in roots
+                for path in root.glob(pattern)
                 if path.is_file()
             ]
         except OSError:
-            return None
+            return None, False
         if not candidates:
-            return None
+            return None, False
         try:
-            return max(candidates, key=lambda path: path.stat().st_mtime_ns)
+            return max(candidates, key=lambda item: item[0].stat().st_mtime_ns)
         except OSError:
             return candidates[0]
+
+    def _is_archived(self, path):
+        if self.archived_root is None:
+            return False
+        try:
+            path.resolve().relative_to(self.archived_root.resolve())
+            return True
+        except (OSError, ValueError):
+            return False
 
     def _tail_records(self, path):
         with path.open("rb") as transcript:

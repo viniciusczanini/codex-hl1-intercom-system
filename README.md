@@ -13,7 +13,7 @@ See the complete [installation and usage guide](INSTALLATION.md) for configurati
 | `task_started` | “Processing.” | A task or queued prompt starts |
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
 | `response_required` | “Attention. Communication required. Please acknowledge.” | Codex stops with a direct question or request |
-| `queue_item_complete` | “Secondary objective secured.” | Another queued item starts after the previous one completes |
+| `queue_item_complete` | “Secondary objective secured.” | One item completes while another task remains active |
 | `task_complete` | “Final objective reached.” | One task finishes and no queued prompt follows |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A sequence of two or more queued tasks finishes |
 | `blocked` | “Warning. Objective failed. User acknowledge.” | Codex reports that it cannot continue |
@@ -87,11 +87,11 @@ If the ChatGPT desktop app was already running when the hooks were installed, qu
 Codex hooks do not expose a desktop-wide queue length. `Stop` ends one turn, not necessarily every task in the app. Intercom therefore aggregates activity across all observed `session_id` values and holds global completion for four seconds:
 
 - If another prompt starts in that window, the previous task is announced as a queue item.
-- If any other session is still active, completion remains silent until the last active session stops.
-- Before deciding, Intercom reads the bounded tail of Codex's own transcript and removes sessions whose persisted turn already reached `task_complete` or no longer exists.
+- If another session is still active, the completed task gets `queue_item_complete`; the final queue announcement waits for the last active session.
+- Before deciding, Intercom reads the bounded tail of Codex's own transcript and removes sessions whose persisted turn reached `task_complete` or whose transcript was moved to Codex's `archived_sessions` directory.
 - There is no task timeout: a transcript ending in `task_started` remains active regardless of how long the task runs.
 - If nothing follows, a one-item batch gets `task_complete`.
-- A sequential or concurrent batch with two or more completed tasks gets exactly one `queue_complete` announcement.
+- A sequential or concurrent batch announces each non-final item and gets exactly one `queue_complete` announcement at the end.
 - Questions and blocked states close the batch immediately and never produce a false queue-complete sound.
 
 Adjust `queue_idle_seconds` in `config.json` if queued prompts on your machine take longer to start.

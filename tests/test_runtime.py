@@ -312,8 +312,11 @@ class RuntimeTests(unittest.TestCase):
 
         finalize_event("session-1", "token-1", self.context)
 
-        self.assertEqual(self.player.played, [])
-        self.assertEqual(self.notifier.calls, [])
+        self.assertEqual(self.player.played, ["queue_item_complete"])
+        self.assertEqual(
+            self.notifier.calls,
+            [("queue_item_complete", "session-1", None)],
+        )
 
         handle_event(
             self.event(
@@ -326,10 +329,16 @@ class RuntimeTests(unittest.TestCase):
         )
         finalize_event("session-2", "token-1", self.context)
 
-        self.assertEqual(self.player.played, ["queue_complete"])
+        self.assertEqual(
+            self.player.played,
+            ["queue_item_complete", "queue_complete"],
+        )
         self.assertEqual(
             self.notifier.calls,
-            [("queue_complete", "session-2", None)],
+            [
+                ("queue_item_complete", "session-1", None),
+                ("queue_complete", "session-2", None),
+            ],
         )
 
     def test_disabled_audio_does_not_disable_alokium(self):

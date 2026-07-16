@@ -20,7 +20,13 @@ class TranscriptLifecycleTests(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
         self.sessions = self.root / "sessions"
         self.sessions.mkdir()
-        self.reader = TranscriptLifecycle(self.sessions, max_tail_bytes=512)
+        self.archived = self.root / "archived_sessions"
+        self.archived.mkdir()
+        self.reader = TranscriptLifecycle(
+            self.sessions,
+            archived_root=self.archived,
+            max_tail_bytes=512,
+        )
 
     def write_events(self, *events, path=None):
         path = path or self.root / "rollout.jsonl"
@@ -97,6 +103,22 @@ class TranscriptLifecycleTests(unittest.TestCase):
         result = self.reader.inspect("session-1")
 
         self.assertEqual(result.status, "active")
+        self.assertEqual(result.path, path)
+
+    def test_archived_rollout_is_terminal_even_without_task_complete(self):
+        path = self.archived / "rollout-session-1.jsonl"
+        self.write_events(
+            lifecycle("task_started", "turn-1"),
+            path=path,
+        )
+
+        result = self.reader.inspect(
+            "session-1",
+            self.sessions / "gone-session-1.jsonl",
+            "turn-1",
+        )
+
+        self.assertEqual(result.status, "archived")
         self.assertEqual(result.path, path)
 
     def test_reader_uses_bounded_tail_and_finds_terminal_event(self):

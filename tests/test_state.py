@@ -59,7 +59,10 @@ class StateStoreTests(unittest.TestCase):
         self.store.prompt_started("s1")
         self.store.prompt_started("s2")
         self.store.completion_pending("s1", "t1", "token-1")
-        self.assertIsNone(self.store.finalize("s1", "token-1").announcement)
+        self.assertEqual(
+            self.store.finalize("s1", "token-1").announcement,
+            "queue_item_complete",
+        )
 
         self.store.completion_pending("s2", "t2", "token-2")
         final = self.store.finalize("s2", "token-2")
@@ -110,7 +113,7 @@ class StateStoreTests(unittest.TestCase):
 
         final = store.finalize("s1", "token-1")
 
-        self.assertIsNone(final.announcement)
+        self.assertEqual(final.announcement, "queue_item_complete")
         self.assertEqual(final.reconciled, (("s2", "active", None),))
 
     def test_completed_transcript_no_longer_blocks_completion(self):
@@ -125,6 +128,18 @@ class StateStoreTests(unittest.TestCase):
         self.assertEqual(final.announcement, "queue_complete")
         self.assertEqual(final.reconciled, (("s2", "complete", None),))
 
+    def test_archived_transcript_no_longer_blocks_completion(self):
+        lifecycle = FakeLifecycle({"s2": LifecycleResult("archived")})
+        store = StateStore(Path(self.temp_dir.name) / "archived", lifecycle=lifecycle)
+        store.prompt_started("s1", "/tmp/s1.jsonl", "t1")
+        store.prompt_started("s2", "/tmp/s2.jsonl", "t2")
+        store.completion_pending("s1", "t1", "token-1")
+
+        final = store.finalize("s1", "token-1")
+
+        self.assertEqual(final.announcement, "queue_complete")
+        self.assertEqual(final.reconciled, (("s2", "archived", None),))
+
     def test_missing_transcript_remains_active_until_positive_completion(self):
         lifecycle = FakeLifecycle({"s2": LifecycleResult("missing")})
         store = StateStore(Path(self.temp_dir.name) / "missing", lifecycle=lifecycle)
@@ -134,7 +149,7 @@ class StateStoreTests(unittest.TestCase):
 
         final = store.finalize("s1", "token-1")
 
-        self.assertIsNone(final.announcement)
+        self.assertEqual(final.announcement, "queue_item_complete")
         self.assertEqual(final.reconciled, (("s2", "missing", None),))
 
     def test_unreadable_transcript_remains_conservatively_active(self):
@@ -148,7 +163,7 @@ class StateStoreTests(unittest.TestCase):
 
         final = store.finalize("s1", "token-1")
 
-        self.assertIsNone(final.announcement)
+        self.assertEqual(final.announcement, "queue_item_complete")
         self.assertEqual(
             final.reconciled,
             (("s2", "unreadable", "PermissionError"),),
@@ -168,7 +183,7 @@ class StateStoreTests(unittest.TestCase):
 
         final = store.finalize("s1", "token-1")
 
-        self.assertIsNone(final.announcement)
+        self.assertEqual(final.announcement, "queue_item_complete")
         self.assertEqual(lifecycle.calls, [("legacy-s2", None, None)])
 
     def test_session_start_updates_metadata_without_creating_active_work(self):
