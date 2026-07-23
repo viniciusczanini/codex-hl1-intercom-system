@@ -38,6 +38,21 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(all(config["announcements"].values()))
         self.assertEqual(config["queue_idle_seconds"], 4.0)
 
+    def test_missing_mode_defaults_to_normal(self):
+        config = load_config(self.write_json({}))
+        self.assertEqual(config["mode"], "normal")
+
+    def test_chill_mode_is_accepted(self):
+        config = load_config(self.write_json({"mode": "chill"}))
+        self.assertEqual(config["mode"], "chill")
+
+    def test_unknown_mode_raises_config_error(self):
+        with self.assertRaisesRegex(
+            ConfigError,
+            "mode must be 'normal' or 'chill'",
+        ):
+            load_config(self.write_json({"mode": "quiet"}))
+
     def test_invalid_json_raises_config_error(self):
         path = self.write_text("{")
         with self.assertRaises(ConfigError):

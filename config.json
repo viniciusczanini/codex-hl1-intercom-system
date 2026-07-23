@@ -1,4 +1,5 @@
 {
+  "mode": "normal",
   "announcements": {
     "task_started": false,
     "permission_required": true,
