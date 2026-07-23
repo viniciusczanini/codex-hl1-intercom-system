@@ -24,9 +24,11 @@ ROOT = Path(__file__).resolve().parents[1]
 class FakePlayer:
     def __init__(self):
         self.played = []
+        self.modes = []
 
-    def play(self, name):
+    def play(self, name, mode="normal"):
         self.played.append(name)
+        self.modes.append(mode)
         return True
 
 
@@ -194,8 +196,22 @@ class RuntimeTests(unittest.TestCase):
 
     def test_disabled_announcement_is_suppressed(self):
         self.config["announcements"]["permission_required"] = False
+        self.config["mode"] = "chill"
         handle_event(self.event("PermissionRequest"), self.context)
         self.assertEqual(self.player.played, [])
+        self.assertEqual(self.player.modes, [])
+
+    def test_chill_mode_is_forwarded_only_to_audio(self):
+        self.config["mode"] = "chill"
+
+        handle_event(self.event("PermissionRequest"), self.context)
+
+        self.assertEqual(self.player.played, ["permission_required"])
+        self.assertEqual(self.player.modes, ["chill"])
+        self.assertEqual(
+            self.notifier.calls,
+            [("permission_required", "session-1", None)],
+        )
 
     def test_subagent_stop_is_silent_in_both_destinations(self):
         output = handle_event(self.event("SubagentStop"), self.context)

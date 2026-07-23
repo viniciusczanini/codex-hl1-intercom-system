@@ -18,8 +18,13 @@ class AudioPlayer:
         self.log_path = log_path
         self.executable = executable
 
-    def play(self, name):
-        sound_path = self.sounds_dir / (name + ".wav")
+    def sound_path(self, name, mode):
+        if mode == "chill":
+            return self.sounds_dir / "chill" / "notification.wav"
+        return self.sounds_dir / (name + ".wav")
+
+    def play(self, name, mode="normal"):
+        sound_path = self.sound_path(name, mode)
         if not sound_path.exists():
             append_log(self.log_path, "missing sound: {0}".format(sound_path))
             return False

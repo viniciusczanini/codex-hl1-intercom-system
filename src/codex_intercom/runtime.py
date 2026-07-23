@@ -127,7 +127,7 @@ class RuntimeContext:
         if not announcement_enabled(self.config, name):
             self.trace("play_suppressed", announcement=name)
             return False
-        started = self.player.play(name)
+        started = self.player.play(name, self.config.get("mode", "normal"))
         self.trace("play_attempted", announcement=name, started=bool(started))
         return started
 
