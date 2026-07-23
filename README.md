@@ -1,6 +1,6 @@
 # Codex HL1 Intercom System
 
-Black Mesa-style voice notifications for Codex on macOS. The project builds short announcements from the Half-Life 1 VOX catalog and connects them to Codex lifecycle hooks.
+Black Mesa-style voice notifications for Codex on macOS. The project builds short announcements from the Half-Life 1 VOX catalog and connects them to Codex lifecycle hooks. An optional chill mode replaces every enabled phrase with the same short GTA Vice City pop-up notification sound.
 
 Every spoken announcement begins with the original Half-Life `vox/buzwarn.wav` Black Mesa signal.
 
@@ -26,6 +26,7 @@ Edit [`config.json`](config.json). Changes apply on the next hook event; rebuild
 
 ```json
 {
+  "mode": "normal",
   "announcements": {
     "task_started": false,
     "permission_required": true,
@@ -43,6 +44,19 @@ Edit [`config.json`](config.json). Changes apply on the next hook event; rebuild
 Set an announcement to `false` to mute only that announcement. Missing announcement keys default to `true`. Invalid JSON fails silent and is recorded in `~/.codex/codex-intercom/intercom.log` so it cannot interrupt Codex.
 
 The shipped configuration keeps `task_started` muted to avoid a sound on every submitted prompt. Set it to `true` if you want the “Processing” announcement.
+
+Set `mode` to `normal` for the current Half-Life phrases or `chill` to use the shared GTA Vice City pop-up notification for every enabled announcement. Mode changes apply on the next hook and do not require a restart.
+
+Use the safe command instead of editing JSON:
+
+```bash
+/usr/bin/python3 scripts/set_config.py mode normal
+/usr/bin/python3 scripts/set_config.py mode chill
+/usr/bin/python3 scripts/set_config.py alokium on
+/usr/bin/python3 scripts/set_config.py alokium off
+```
+
+The repository can also be controlled through four Apple Shortcuts named `Intercom - normal`, `Intercom - chill`, `Intercom - LEDs on`, and `Intercom - LEDs off`. Matching application launchers can be placed on the Desktop for double-click access. Audio mode and LED forwarding are independent.
 
 ## Optional Alokium LED bridge
 
@@ -74,7 +88,7 @@ cd codex-hl1-intercom-system
 /usr/bin/python3 scripts/install.py
 ```
 
-The seven final WAV announcements are included in `assets/`, so normal installation does not require `ffmpeg`, audio downloads, or a separate build step.
+The seven final Half-Life WAV announcements and the shared chill WAV are included in `assets/`, so normal installation does not require `ffmpeg`, audio downloads, or a separate build step.
 
 The installer preserves unrelated hooks and does not modify `~/.codex/config.toml` or its existing `notify` command. It is idempotent, so rerunning it does not create duplicate handlers.
 
@@ -112,6 +126,7 @@ for wav in assets/*.wav; do
   echo "PLAYING $wav"
   /usr/bin/afplay "$wav"
 done
+/usr/bin/afplay assets/chill/notification.wav
 ```
 
 ## Uninstall
@@ -138,3 +153,5 @@ The trace contains event, session, classification, scheduling, transcript lifecy
 Final phrase assets are included for easy installation. Original fragments and normalized intermediate files remain local and are excluded from Git.
 
 Original sound fragments, including `vox/buzwarn.wav`, were sourced through [HL1SFX](https://hl1sfx.com/). Half-Life and its original audio assets were created by and belong to Valve Corporation. This unofficial integration and its phrase arrangements were created by [viniciusczanini](https://github.com/viniciusczanini). The project is not affiliated with or endorsed by Valve Corporation or HL1SFX.
+
+The chill notification is an audio effect from Grand Theft Auto: Vice City. Grand Theft Auto, Vice City, and their original audio assets were created by Rockstar Games and are owned by Rockstar Games/Take-Two Interactive. This project is not affiliated with, endorsed by, or sponsored by Rockstar Games or Take-Two Interactive.

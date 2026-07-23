@@ -87,10 +87,16 @@ def expected_assets(root):
     phrases = manifest.get("phrases")
     if not isinstance(phrases, dict) or not phrases:
         raise ValueError("sound manifest must contain phrase definitions")
-    return [root / "assets" / (name + ".wav") for name in sorted(phrases)]
+    assets = [
+        root / "assets" / (name + ".wav")
+        for name in sorted(phrases)
+    ]
+    assets.append(root / "assets" / "chill" / "notification.wav")
+    return assets
 
 
 def validate_assets(root):
+    assets_dir = Path(root) / "assets"
     invalid = []
     for path in expected_assets(root):
         try:
@@ -98,7 +104,7 @@ def validate_assets(root):
         except OSError:
             valid = False
         if not valid:
-            invalid.append(path.name)
+            invalid.append(str(path.relative_to(assets_dir)))
     if invalid:
         raise ValueError(
             "missing or invalid bundled assets: {0}".format(", ".join(invalid))

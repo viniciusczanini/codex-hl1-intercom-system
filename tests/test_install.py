@@ -92,10 +92,19 @@ class InstallRoundTripTests(unittest.TestCase):
         (self.project / "assets" / "task_complete.wav").write_bytes(
             b"RIFF" + b"\0" * 64
         )
+        (self.project / "assets" / "chill").mkdir()
+        (self.project / "assets" / "chill" / "notification.wav").write_bytes(
+            b"RIFF" + b"\0" * 64
+        )
 
     def test_validate_assets_rejects_missing_phrase(self):
         (self.project / "assets" / "task_complete.wav").unlink()
         with self.assertRaisesRegex(ValueError, "task_complete.wav"):
+            validate_assets(self.project)
+
+    def test_validate_assets_rejects_missing_chill_notification(self):
+        (self.project / "assets" / "chill" / "notification.wav").unlink()
+        with self.assertRaisesRegex(ValueError, "chill/notification.wav"):
             validate_assets(self.project)
 
     @patch("scripts.install.build_all")
