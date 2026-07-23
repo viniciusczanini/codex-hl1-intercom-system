@@ -103,7 +103,10 @@ class StateStore:
                     pending_turn=None,
                     pending_session=None,
                 )
-                return FinalizeTransition(None, tuple(reconciled))
+                return FinalizeTransition(
+                    "queue_item_complete",
+                    tuple(reconciled),
+                )
             name = (
                 "queue_complete"
                 if int(state.get("batch_count", 0)) > 1
@@ -128,7 +131,7 @@ class StateStore:
                 result.status,
                 result.error_type,
             ))
-            if result.status == "complete":
+            if result.status in ("complete", "archived"):
                 del active[active_session]
             elif result.path and not metadata.get("transcript_path"):
                 metadata["transcript_path"] = str(result.path)

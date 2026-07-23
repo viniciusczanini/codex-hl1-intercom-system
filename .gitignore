@@ -5,3 +5,4 @@ sounds/source/
 sounds/normalized/
 sounds/generated/
 .coverage
+config.json.lock

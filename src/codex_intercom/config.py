@@ -48,10 +48,15 @@ def load_config(path):
     if not isinstance(alokium_enabled, bool):
         raise ConfigError("alokium_enabled must be boolean")
 
+    mode = raw.get("mode", "normal")
+    if mode not in ("normal", "chill"):
+        raise ConfigError("mode must be 'normal' or 'chill'")
+
     return {
         "announcements": merged,
         "queue_idle_seconds": float(idle),
         "alokium_enabled": alokium_enabled,
+        "mode": mode,
     }
 
 

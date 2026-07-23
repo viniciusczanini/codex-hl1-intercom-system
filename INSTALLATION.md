@@ -1,6 +1,6 @@
 # Installation and Usage
 
-Codex HL1 Intercom System plays Half-Life 1 VOX-style announcements for Codex lifecycle events on macOS. Every spoken announcement starts with the original `vox/buzwarn.wav` signal. The repository includes seven final WAV phrases, so normal installation does not require downloading or building audio.
+Codex HL1 Intercom System plays Half-Life 1 VOX-style announcements for Codex lifecycle events on macOS. Every spoken announcement starts with the original `vox/buzwarn.wav` signal. A chill mode uses one short GTA Vice City pop-up sound instead. The repository includes all ready-to-play WAVs, so normal installation does not require downloading or building audio.
 
 ## Requirements
 
@@ -37,7 +37,7 @@ After installation:
 2. Review and trust the four entries labelled **Black Mesa intercom**.
 3. If the ChatGPT desktop app was already open during installation, quit it normally and reopen it once.
 
-The desktop app loads hook definitions when its embedded Codex process starts. This restart is only needed after installing or changing hook definitions. Editing announcement toggles in `config.json` takes effect on the next event without another restart.
+The desktop app loads hook definitions when its embedded Codex process starts. This restart is only needed after installing or changing hook definitions. Editing announcement toggles, audio mode, or LED forwarding in `config.json` takes effect on the next event without another restart.
 
 If the separate `codex_alokium_intercom` repository exists beside this checkout, this runtime sends it the same finalized semantic announcement used for audio. It never forwards raw `Stop` or `SubagentStop` events. No second hook definition is required for the LED bridge.
 
@@ -48,7 +48,7 @@ If the separate `codex_alokium_intercom` repository exists beside this checkout,
 | `task_started` | “Processing.” | A prompt or queued task starts |
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
 | `response_required` | “Attention. Communication required. Please acknowledge.” | Codex finishes with a direct question or request |
-| `queue_item_complete` | “Secondary objective secured.” | A new queued prompt follows a completed item |
+| `queue_item_complete` | “Secondary objective secured.” | One item completes while another task remains active |
 | `task_complete` | “Final objective reached.” | One task finishes with no queued successor |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A batch of two or more queued tasks finishes |
 | `blocked` | “Warning. Objective failed. User acknowledge.” | Codex reports that it cannot continue |
@@ -61,6 +61,7 @@ Edit `config.json` in the cloned repository:
 
 ```json
 {
+  "mode": "normal",
   "announcements": {
     "task_started": false,
     "permission_required": true,
@@ -77,6 +78,22 @@ Edit `config.json` in the cloned repository:
 
 Set any announcement to `false` to mute only that event. Missing announcement keys default to `true`. The shipped configuration keeps `task_started` disabled to avoid playing “Processing” for every submitted prompt.
 
+Set `mode` to:
+
+- `normal` to play the announcement-specific Half-Life VOX phrase.
+- `chill` to play the same short GTA Vice City pop-up notification for every enabled announcement.
+
+You can switch settings safely without opening the JSON file:
+
+```bash
+/usr/bin/python3 scripts/set_config.py mode normal
+/usr/bin/python3 scripts/set_config.py mode chill
+/usr/bin/python3 scripts/set_config.py alokium on
+/usr/bin/python3 scripts/set_config.py alokium off
+```
+
+The command locks `config.json`, preserves every unrelated field, and replaces the file atomically. Mode and LED changes apply on the next hook without restarting ChatGPT.
+
 `queue_idle_seconds` controls how long the intercom waits for another prompt before announcing that a task or queue has finished. Increase it if queued prompts on your machine routinely take more than four seconds to begin.
 
 Completion is aggregated across Codex sessions. A `Stop` from one task cannot play “Final objective reached” while another observed session remains active. Before the final decision, Intercom checks the bounded tail of each Codex transcript for its real `task_started` or `task_complete` lifecycle. This repairs sessions left behind when an interrupted task never emits `Stop`.
@@ -86,6 +103,25 @@ There is no task timeout. A persisted task ending in `task_started` remains acti
 Set `alokium_enabled` to `false` to disable LED notifications while keeping audio active.
 
 Invalid configuration does not interrupt Codex. The event is skipped and the error is written to `~/.codex/codex-intercom/intercom.log`.
+
+## Apple Shortcuts and Desktop controls
+
+The local setup can expose four Apple Shortcuts:
+
+- `Intercom - normal`
+- `Intercom - chill`
+- `Intercom - LEDs on`
+- `Intercom - LEDs off`
+
+Each shortcut runs one of the safe commands above. Matching `.app` launchers on the Desktop call the Apple Shortcuts through the macOS `shortcuts` command, so double-clicking a launcher changes exactly one setting. The shortcuts do not restart ChatGPT, the hook, or the Alokium service.
+
+To verify them:
+
+```bash
+/usr/bin/shortcuts list | grep '^Intercom - '
+/usr/bin/shortcuts run "Intercom - chill"
+/usr/bin/shortcuts run "Intercom - LEDs off"
+```
 
 ## Test the installation
 
@@ -110,6 +146,7 @@ for wav in assets/*.wav; do
   echo "PLAYING $wav"
   /usr/bin/afplay "$wav"
 done
+/usr/bin/afplay assets/chill/notification.wav
 ```
 
 ## Troubleshooting
@@ -134,7 +171,7 @@ Useful trace stages include:
 - `hook_failed`: the hook raised an error.
 - `announcement_dispatched`: audio and semantic Alokium results for one finalized announcement.
 - `session_state_refreshed`: a silent `SessionStart` refreshed persisted metadata.
-- `session_reconciled`: another session was classified as `active`, `complete`, `missing`, or conservatively `unreadable` from its transcript.
+- `session_reconciled`: another session was classified as `active`, `complete`, `archived`, `missing`, or conservatively `unreadable` from its transcript.
 - `subagent_stop_ignored`: an internal subagent event was intentionally silenced.
 
 ### Check runtime errors
@@ -203,6 +240,7 @@ If the desktop app is open, quit and reopen it once so its embedded Codex proces
 
 - Original sound fragments, including `vox/buzwarn.wav`, were located and downloaded through [HL1SFX](https://hl1sfx.com/), which is also the recommended catalog for finding additional Half-Life sounds.
 - Half-Life, its names, and its original audio assets were created by and belong to Valve Corporation.
+- The chill notification is an audio effect from Grand Theft Auto: Vice City. Grand Theft Auto, Vice City, and their original audio assets were created by Rockstar Games and are owned by Rockstar Games/Take-Two Interactive.
 - The Codex hook integration and phrase arrangements in this repository were created by [viniciusczanini](https://github.com/viniciusczanini).
 
-This is an unofficial fan project. It is not affiliated with, endorsed by, or sponsored by Valve Corporation or HL1SFX.
+This is an unofficial fan project. It is not affiliated with, endorsed by, or sponsored by Valve Corporation, HL1SFX, Rockstar Games, or Take-Two Interactive.

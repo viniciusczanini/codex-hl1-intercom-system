@@ -127,7 +127,7 @@ class RuntimeContext:
         if not announcement_enabled(self.config, name):
             self.trace("play_suppressed", announcement=name)
             return False
-        started = self.player.play(name)
+        started = self.player.play(name, self.config.get("mode", "normal"))
         self.trace("play_attempted", announcement=name, started=bool(started))
         return started
 
@@ -261,7 +261,10 @@ def create_context(root=None, codex_home=None):
     codex_home = codex_home or default_codex_home()
     runtime_root = codex_home / "codex-intercom"
     log_path = runtime_root / "intercom.log"
-    lifecycle = TranscriptLifecycle(codex_home / "sessions")
+    lifecycle = TranscriptLifecycle(
+        codex_home / "sessions",
+        archived_root=codex_home / "archived_sessions",
+    )
     return RuntimeContext(
         config=load_config(root / "config.json"),
         state=StateStore(runtime_root / "state", lifecycle=lifecycle),

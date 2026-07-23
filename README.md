@@ -1,6 +1,6 @@
 # Codex HL1 Intercom System
 
-Black Mesa-style voice notifications for Codex on macOS. The project builds short announcements from the Half-Life 1 VOX catalog and connects them to Codex lifecycle hooks.
+Black Mesa-style voice notifications for Codex on macOS. The project builds short announcements from the Half-Life 1 VOX catalog and connects them to Codex lifecycle hooks. An optional chill mode replaces every enabled phrase with the same short GTA Vice City pop-up notification sound.
 
 Every spoken announcement begins with the original Half-Life `vox/buzwarn.wav` Black Mesa signal.
 
@@ -13,7 +13,7 @@ See the complete [installation and usage guide](INSTALLATION.md) for configurati
 | `task_started` | “Processing.” | A task or queued prompt starts |
 | `permission_required` | “Attention. Security clearance required. Please acknowledge.” | Codex requests permission |
 | `response_required` | “Attention. Communication required. Please acknowledge.” | Codex stops with a direct question or request |
-| `queue_item_complete` | “Secondary objective secured.” | Another queued item starts after the previous one completes |
+| `queue_item_complete` | “Secondary objective secured.” | One item completes while another task remains active |
 | `task_complete` | “Final objective reached.” | One task finishes and no queued prompt follows |
 | `queue_complete` | “Final objective secured. All systems nominal.” | A sequence of two or more queued tasks finishes |
 | `blocked` | “Warning. Objective failed. User acknowledge.” | Codex reports that it cannot continue |
@@ -26,6 +26,7 @@ Edit [`config.json`](config.json). Changes apply on the next hook event; rebuild
 
 ```json
 {
+  "mode": "normal",
   "announcements": {
     "task_started": false,
     "permission_required": true,
@@ -43,6 +44,19 @@ Edit [`config.json`](config.json). Changes apply on the next hook event; rebuild
 Set an announcement to `false` to mute only that announcement. Missing announcement keys default to `true`. Invalid JSON fails silent and is recorded in `~/.codex/codex-intercom/intercom.log` so it cannot interrupt Codex.
 
 The shipped configuration keeps `task_started` muted to avoid a sound on every submitted prompt. Set it to `true` if you want the “Processing” announcement.
+
+Set `mode` to `normal` for the current Half-Life phrases or `chill` to use the shared GTA Vice City pop-up notification for every enabled announcement. Mode changes apply on the next hook and do not require a restart.
+
+Use the safe command instead of editing JSON:
+
+```bash
+/usr/bin/python3 scripts/set_config.py mode normal
+/usr/bin/python3 scripts/set_config.py mode chill
+/usr/bin/python3 scripts/set_config.py alokium on
+/usr/bin/python3 scripts/set_config.py alokium off
+```
+
+The repository can also be controlled through four Apple Shortcuts named `Intercom - normal`, `Intercom - chill`, `Intercom - LEDs on`, and `Intercom - LEDs off`. Matching application launchers can be placed on the Desktop for double-click access. Audio mode and LED forwarding are independent.
 
 ## Optional Alokium LED bridge
 
@@ -74,7 +88,7 @@ cd codex-hl1-intercom-system
 /usr/bin/python3 scripts/install.py
 ```
 
-The seven final WAV announcements are included in `assets/`, so normal installation does not require `ffmpeg`, audio downloads, or a separate build step.
+The seven final Half-Life WAV announcements and the shared chill WAV are included in `assets/`, so normal installation does not require `ffmpeg`, audio downloads, or a separate build step.
 
 The installer preserves unrelated hooks and does not modify `~/.codex/config.toml` or its existing `notify` command. It is idempotent, so rerunning it does not create duplicate handlers.
 
@@ -87,11 +101,11 @@ If the ChatGPT desktop app was already running when the hooks were installed, qu
 Codex hooks do not expose a desktop-wide queue length. `Stop` ends one turn, not necessarily every task in the app. Intercom therefore aggregates activity across all observed `session_id` values and holds global completion for four seconds:
 
 - If another prompt starts in that window, the previous task is announced as a queue item.
-- If any other session is still active, completion remains silent until the last active session stops.
-- Before deciding, Intercom reads the bounded tail of Codex's own transcript and removes sessions whose persisted turn already reached `task_complete` or no longer exists.
+- If another session is still active, the completed task gets `queue_item_complete`; the final queue announcement waits for the last active session.
+- Before deciding, Intercom reads the bounded tail of Codex's own transcript and removes sessions whose persisted turn reached `task_complete` or whose transcript was moved to Codex's `archived_sessions` directory.
 - There is no task timeout: a transcript ending in `task_started` remains active regardless of how long the task runs.
 - If nothing follows, a one-item batch gets `task_complete`.
-- A sequential or concurrent batch with two or more completed tasks gets exactly one `queue_complete` announcement.
+- A sequential or concurrent batch announces each non-final item and gets exactly one `queue_complete` announcement at the end.
 - Questions and blocked states close the batch immediately and never produce a false queue-complete sound.
 
 Adjust `queue_idle_seconds` in `config.json` if queued prompts on your machine take longer to start.
@@ -112,6 +126,7 @@ for wav in assets/*.wav; do
   echo "PLAYING $wav"
   /usr/bin/afplay "$wav"
 done
+/usr/bin/afplay assets/chill/notification.wav
 ```
 
 ## Uninstall
@@ -138,3 +153,5 @@ The trace contains event, session, classification, scheduling, transcript lifecy
 Final phrase assets are included for easy installation. Original fragments and normalized intermediate files remain local and are excluded from Git.
 
 Original sound fragments, including `vox/buzwarn.wav`, were sourced through [HL1SFX](https://hl1sfx.com/). Half-Life and its original audio assets were created by and belong to Valve Corporation. This unofficial integration and its phrase arrangements were created by [viniciusczanini](https://github.com/viniciusczanini). The project is not affiliated with or endorsed by Valve Corporation or HL1SFX.
+
+The chill notification is an audio effect from Grand Theft Auto: Vice City. Grand Theft Auto, Vice City, and their original audio assets were created by Rockstar Games and are owned by Rockstar Games/Take-Two Interactive. This project is not affiliated with, endorsed by, or sponsored by Rockstar Games or Take-Two Interactive.
